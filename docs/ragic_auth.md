@@ -3,6 +3,9 @@
 > Complete record of all authentication design decisions, implementation details,
 > and Ragic API integration for the RIVEROS maritime operations system.
 
+> **Last updated:** 2026-02-24
+> **Auth status:** ✅ COMPLETE — login, JWT, route protection, sign out all working.
+
 ---
 
 ## 1. Project Context
@@ -15,7 +18,8 @@
 | Database | Ragic (EU4 region — `https://eu4.ragic.com/rtoperations`) |
 | Auth strategy | Custom JWT — no third-party auth service |
 
-**Key principle:** Ragic is the only data store. There is no PostgreSQL, Prisma, or local database. All data lives in Ragic sheets.
+**Key principle:** Ragic is the only data store. There is no PostgreSQL, Prisma, or local database.
+All data lives in Ragic sheets. Auth validates against Ragic and we issue our own JWT.
 
 ---
 
@@ -29,10 +33,10 @@
 | Styling | Tailwind CSS | v4 |
 | UI Components | shadcn/ui | New York style, neutral base |
 | Form handling | React Hook Form + Zod | Latest |
-| Icons | Lucide React | Latest |
+| Icons | Lucide React + Tabler Icons | Latest |
 | JWT library | `jose` | Latest (Edge-compatible) |
 | State | Zustand | 5.x |
-| i18n | next-intl | 4.x |
+| i18n | next-intl | 4.x (installed, not yet wired) |
 
 > **Why `jose` instead of `jsonwebtoken`?**
 > `jsonwebtoken` uses Node.js crypto APIs that are not available in the Next.js Edge Runtime.
@@ -47,7 +51,7 @@ Every item below was explicitly confirmed during the design conversation.
 ### 3.1 Auth Service
 - ✅ **No third-party auth** — no Clerk, no NextAuth, no Auth.js
 - ✅ Custom JWT issued by our own Next.js backend
-- ✅ Ragic Password Auth endpoint used only to **validate credentials** — we do not use the Ragic session ID beyond login
+- ✅ Ragic Password Auth endpoint used only to **validate credentials** — we do not use the Ragic session ID for anything after login
 
 ### 3.2 User Data Storage in JWT
 - ✅ **Option A chosen**: all user fields stored directly in the JWT payload
@@ -59,24 +63,25 @@ Every item below was explicitly confirmed during the design conversation.
 - ✅ **Option B chosen**: let them in with empty vessel fields
 - If a user exists in Ragic's auth system but has **no record in `ragic-setup/1`**, they are allowed to log in
 - `vessel` and `vesselAbbr` will be empty strings in the JWT
+- The TopNav vessel badge is conditionally rendered (`{vessel && <...>}`) — not shown if empty
 
 ### 3.4 Root Route Behaviour
 - ✅ `/` always redirects to `/login`
-- If already authenticated, the proxy passes through to `/dashboard`
+- If already authenticated, proxy passes through to `/dashboard`
 - If not authenticated, proxy redirects to `/login`
 
 ### 3.5 Cookie
 - ✅ Cookie name: **`riveros_token`**
 - ✅ Storage: **httpOnly cookie** (never localStorage — protects against XSS)
-- ✅ Expiry: **24 hours**
-- ✅ `sameSite: "lax"`, `secure: true` in production
+- ✅ Expiry: **24 hours** (`maxAge: 86400`)
+- ✅ `sameSite: "lax"`, `secure: true` in production only
 
 ### 3.6 Routing After Login
 - ✅ Successful login redirects to `/dashboard`
 - ✅ Sign out deletes the cookie and redirects to `/login`
 
-### 3.7 Field IDs
-- ✅ Confirmed field IDs for `ragic-setup/1`:
+### 3.7 Field IDs (ragic-setup/1)
+- ✅ Confirmed field IDs:
   - Email: `"1"`
   - Name: `"4"`
   - Assigned Vessel: `"1000191"`
@@ -85,12 +90,12 @@ Every item below was explicitly confirmed during the design conversation.
 
 ### 3.8 shadcn/ui Components Added
 - ✅ `button`, `card`, `input`, `label`, `form`
-- Installed via: `node node_modules/shadcn/dist/index.js add <component>` (no npx — not available in this environment)
+- Installed via: `node node_modules/shadcn/dist/index.js add <component>`
 
 ### 3.9 Next.js 16 Middleware Rename
 - ✅ In Next.js 16, `middleware.ts` is renamed to `proxy.ts`
 - The exported function must be named `proxy` (not `middleware`)
-- See: `https://nextjs.org/docs/messages/middleware-to-proxy`
+- See: https://nextjs.org/docs/messages/middleware-to-proxy
 
 ---
 
@@ -124,6 +129,7 @@ GET https://<server>/AUTH?u=<email>&p=<password>&login_type=sessionId&json=1&api
 }
 ```
 The key field is **`sid`** (not `sessionId` — confirmed from live debug output).
+The `sid` value is only used to confirm the password is valid. It is discarded after that.
 
 **Response on failure:**
 ```
@@ -141,11 +147,12 @@ or
 
 **Reference:** [HTTP Basic Authentication](https://www.ragic.com/intl/en/doc-api/24/HTTP-Basic-authentication-with-Ragic-API-Key)
 
-All Ragic sheet API calls require:
+All Ragic sheet API calls (reading user profile at login) require:
 ```
 Authorization: Basic <RAGIC_API_KEY>
 ```
 The API key is pre-encoded base64 — use it directly in the header value.
+This is handled automatically by `ragicRequest()` in `src/lib/ragic.ts`.
 
 ### 4.3 Sheet Query Format
 
@@ -157,14 +164,15 @@ GET /rtoperations/<tab>/<sheetId>?v=3&api&naming=EID&where=<fieldId>,eq,<value>
 
 | Parameter | Value | Description |
 |---|---|---|
-| `v` | `3` | API version |
+| `v` | `3` | API version pin |
 | `api` | (empty) | Marks as API call |
-| `naming` | `EID` | Use field IDs (not display names) as JSON keys |
+| `naming` | `EID` | Use numeric field IDs as JSON keys (not display labels) |
 | `where` | `fieldId,eq,value` | Filter records by field value |
 
 ### 4.4 Ragic Error Code 106
 
-During debug, the sheet query returned:
+Ragic returns HTTP 200 even for errors. Always check the response body.
+
 ```json
 {
   "status": "ERROR",
@@ -173,8 +181,9 @@ During debug, the sheet query returned:
 }
 ```
 
-**Note:** Ragic returns HTTP 200 even for error responses — the error is in the JSON body.
-Error code 106 = the Authorization header is missing, malformed, or the API key does not have read access to that sheet.
+Error code 106 = Authorization header is missing, malformed, or the API key does not have
+read access to that sheet. Fix: verify `RAGIC_API_KEY` in `.env.local` is the correct
+pre-encoded base64 key from Ragic Account Settings → API Key.
 
 ---
 
@@ -182,7 +191,7 @@ Error code 106 = the Authorization header is missing, malformed, or the API key 
 
 ### 5.1 Users Sheet — `ragic-setup/1`
 
-**URL:** `https://eu4.ragic.com/rtoperations/ragic-setup/1?PAGEID=bpd`
+**URL:** `https://eu4.ragic.com/rtoperations/ragic-setup/1`
 
 | Field | Field ID | Description |
 |---|---|---|
@@ -196,107 +205,250 @@ Query used at login:
 GET /rtoperations/ragic-setup/1?v=3&api=&naming=EID&where=1,eq,<email>
 ```
 
----
-
-## 6. Authentication Flow — Step by Step
-
+**Important:** The response is a JSON object keyed by record ID, not an array:
+```json
+{
+  "1023": {
+    "1": "user@example.com",
+    "4": "John Smith",
+    "1000191": "MV Atlas",
+    "1000543": "MVA"
+  }
+}
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        User Browser                             │
-│  1. Fills email + password on /login page                       │
-│  2. Submits form → POST /api/auth                               │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   POST /api/auth  (server-side)                 │
-│                                                                  │
-│  Step 1: Call Ragic AUTH endpoint                               │
-│    GET https://eu4.ragic.com/AUTH?u=email&p=pwd&...             │
-│    → Returns { sid: "..." } on success, or -1 on failure        │
-│    → If -1: return 401 "Invalid email or password"              │
-│                                                                  │
-│  Step 2: Fetch user profile from ragic-setup/1                  │
-│    GET /rtoperations/ragic-setup/1?where=1,eq,<email>           │
-│    Authorization: Basic <RAGIC_API_KEY>                         │
-│    → Returns sheet rows as JSON object keyed by record ID       │
-│    → Extract: name (field 4), vessel (1000191), abbr (1000543)  │
-│    → If not found: use empty strings (user still logs in)       │
-│                                                                  │
-│  Step 3: Sign JWT                                               │
-│    Payload: { email, name, vessel, vesselAbbr }                 │
-│    Algorithm: HS256                                             │
-│    Expiry: 24h                                                  │
-│    Secret: JWT_SECRET (from env)                                │
-│                                                                  │
-│  Step 4: Set httpOnly cookie                                    │
-│    Name:     riveros_token                                       │
-│    httpOnly: true                                               │
-│    sameSite: lax                                                │
-│    secure:   true (production only)                             │
-│    maxAge:   86400 (24 hours)                                   │
-│    path:     /                                                  │
-│                                                                  │
-│  Step 5: Return { ok: true }                                    │
-│    Client redirects to /dashboard                               │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  Subsequent Requests                             │
-│                                                                  │
-│  proxy.ts intercepts every request                              │
-│  → Reads riveros_token cookie                                   │
-│  → Verifies JWT with JWT_SECRET                                 │
-│  → Invalid/missing → redirect to /login + delete cookie         │
-│  → Valid → allow request through                                │
-│                                                                  │
-│  Public paths (no JWT required):                                │
-│  → /login                                                       │
-│  → /api/auth  (and all sub-paths)                               │
-└─────────────────────────────────────────────────────────────────┘
-```
+We call `Object.values(sheetData)` to get the rows array, then take `rows[0]`.
 
 ---
 
-## 7. File Structure — Auth-Related Files
+## 6. Complete Login Flow — What Happens at Login Time
+
+This is the full step-by-step of what happens from the moment the user hits "Sign In".
+
+```
+USER BROWSER
+│
+│  1. Fills email + password on /login
+│     React Hook Form validates client-side with Zod:
+│       - email: must be valid email format
+│       - password: must be non-empty (min 1 char)
+│     On first invalid submit: inline field errors shown
+│
+│  2. Submits: POST /api/auth  { email, password }
+│     fetch("/api/auth", { method: "POST", headers: {Content-Type: application/json}, body: JSON.stringify({email,password}) })
+│
+└─────────────────────────────────────────────────────────────────────────▼
+
+NEXT.JS SERVER — POST /api/auth  (src/app/api/auth/route.ts)
+│
+│  STEP A — Validate credentials against Ragic
+│  ─────────────────────────────────────────────────────────────────────
+│  ragicPasswordAuth(email, password)
+│    → GET https://eu4.ragic.com/AUTH?u={email}&p={password}&login_type=sessionId&json=1&api=
+│    → No Authorization header needed (this is a public password endpoint)
+│    → Response text is parsed:
+│       • { sid: "node01..." } = success → extract sid string
+│       • -1 or { sessionId: -1 }  = failure → return null
+│    → If null: return 401 { error: "Invalid email or password." }
+│    → The sid is only used to confirm validity. It is NOT stored anywhere.
+│
+│  STEP B — Fetch user profile from ragic-setup/1
+│  ─────────────────────────────────────────────────────────────────────
+│  ragicRequest("ragic-setup/1", { params: { where: "1,eq,{email}" } })
+│    → GET https://eu4.ragic.com/rtoperations/ragic-setup/1
+│        ?v=3&api=&naming=EID&where=1,eq,{email}
+│    → Authorization: Basic {RAGIC_API_KEY}   ← from process.env (server only)
+│    → Response: object keyed by record ID
+│       { "1023": { "1": email, "4": name, "1000191": vessel, "1000543": abbr } }
+│    → Object.values(sheetData).filter(v => typeof v === "object")
+│       → rows[0] = first (and only) matching record
+│    → Extract:
+│       name       = rows[0]["4"]        or ""  (if not in sheet)
+│       vessel     = rows[0]["1000191"]  or ""
+│       vesselAbbr = rows[0]["1000543"]  or ""
+│    → If user has no row in ragic-setup/1: all three are empty strings.
+│      Login still succeeds — the user is authenticated via Ragic password.
+│
+│  STEP C — Sign JWT
+│  ─────────────────────────────────────────────────────────────────────
+│  signToken({ email, name, vessel, vesselAbbr })
+│    → jose SignJWT
+│    → Algorithm: HS256
+│    → Expiry: 24h from issuedAt
+│    → Secret: process.env.JWT_SECRET (min 32 chars)
+│    → Returns signed token string
+│
+│  STEP D — Set httpOnly cookie
+│  ─────────────────────────────────────────────────────────────────────
+│  response.cookies.set("riveros_token", token, {
+│    httpOnly: true,                         ← JS cannot read this cookie
+│    secure: NODE_ENV === "production",      ← HTTPS only in prod
+│    sameSite: "lax",                        ← CSRF protection
+│    maxAge: 86400,                          ← 24 hours in seconds
+│    path: "/",                              ← sent on all routes
+│  })
+│
+│  STEP E — Return success
+│  ─────────────────────────────────────────────────────────────────────
+│  return NextResponse.json({ ok: true })
+│
+└─────────────────────────────────────────────────────────────────────────▼
+
+USER BROWSER (receives { ok: true })
+│
+│  3. Login page receives 200 { ok: true }
+│     router.push("/dashboard")
+│
+└─────────────────────────────────────────────────────────────────────────▼
+
+PROXY.TS — intercepts GET /dashboard
+│
+│  4. Reads req.cookies.get("riveros_token")
+│     verifyToken(token) → jose jwtVerify with JWT_SECRET
+│     Valid → NextResponse.next()  (allow through to layout)
+│
+└─────────────────────────────────────────────────────────────────────────▼
+
+DASHBOARD LAYOUT  (src/app/(dashboard)/layout.tsx)
+│
+│  5. Server Component runs
+│     cookies().get("riveros_token")
+│     verifyToken(token) → { email, name, vessel, vesselAbbr }
+│     Passes to <TopNav name={} email={} vessel={} vesselAbbr={} />
+│
+└─────────────────────────────────────────────────────────────────────────▼
+
+DASHBOARD PAGE  (src/app/(dashboard)/dashboard/page.tsx)
+│
+│  6. Server Component runs
+│     cookies().get("riveros_token")
+│     verifyToken(token) → firstName (first word of name)
+│     Renders "Welcome back, {firstName}" + <ModuleGrid />
+│
+└─────────────────────────────────────────────────────────────────────────▼
+
+BROWSER RENDERS DASHBOARD
+│
+│  TopNav shows:  vessel badge, user initials, first name
+│  Dashboard shows: "Welcome back, {firstName}", 6 module cards
+│
+└─────────────────────────────────────────────────────────────────────────
+```
+
+---
+
+## 7. Sign Out Flow
+
+```
+User clicks "Sign Out" in TopNav dropdown (or profile panel)
+    │
+    ▼
+TopNav client component
+    await fetch("/api/auth/signout", { method: "POST" })
+    router.push("/login")
+    │
+    ▼
+POST /api/auth/signout  (src/app/api/auth/signout/route.ts)
+    response.cookies.delete("riveros_token")
+    return { ok: true }
+    │
+    ▼
+Browser navigates to /login
+    │
+    ▼
+proxy.ts: no cookie → pathname is /login → public path → allow
+```
+
+---
+
+## 8. Route Protection (proxy.ts)
+
+Next.js 16 renamed `middleware.ts` → `proxy.ts`.
+The exported function must be named `proxy`.
+
+```typescript
+export async function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Public paths — skip JWT check
+  const PUBLIC_PATHS = ["/login", "/api/auth"];
+  const isPublic = PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+  if (isPublic) return NextResponse.next();
+
+  // Protected path — verify token
+  const token = req.cookies.get("riveros_token")?.value;
+  if (!token) return NextResponse.redirect(new URL("/login", req.url));
+
+  const payload = await verifyToken(token);
+  if (!payload) {
+    const res = NextResponse.redirect(new URL("/login", req.url));
+    res.cookies.delete("riveros_token");
+    return res;
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|logo.jpg|.*\\.png|.*\\.svg).*)"],
+};
+```
+
+**Public paths:**
+- `/login`
+- `/api/auth` and all sub-paths (includes `/api/auth/signout`)
+
+**On invalid/expired token:** delete cookie + redirect to `/login`
+
+---
+
+## 9. File Structure — Auth-Related Files
 
 ```
 src/
 ├── proxy.ts                          ← Route protection (Next.js 16 naming)
-│                                       Replaces middleware.ts
 │                                       Exports: proxy() function
 │
 ├── lib/
 │   ├── auth.ts                       ← JWT sign + verify
-│   │     signToken(payload)  → string
-│   │     verifyToken(token)  → JWTPayload | null
-│   │     COOKIE_NAME exported
+│   │     signToken(payload)  → Promise<string>
+│   │     verifyToken(token)  → Promise<JWTPayload | null>
+│   │     COOKIE_NAME = "riveros_token"
 │   │
-│   └── ragic.ts                      ← Ragic HTTP utilities
-│         ragicRequest(path, opts)   → T
-│         ragicPasswordAuth(email, pw) → string | null
+│   └── ragic.ts                      ← Ragic HTTP utilities (server-only)
+│         ragicRequest(path, opts)      → T
+│         ragicPasswordAuth(email, pw)  → string | null
+│         ⚠ Contains DEBUG console.log statements — remove before production
 │
 ├── constants/
-│   └── ragic-fields.ts               ← All sheet paths + field IDs
+│   └── ragic-fields.ts               ← Named constants — never hardcode IDs inline
 │         SHEETS.USERS = "ragic-setup/1"
-│         USER_FIELDS.EMAIL, NAME, ASSIGNED_VESSEL, VESSEL_ABBREVIATION
+│         USER_FIELDS.EMAIL = "1"
+│         USER_FIELDS.NAME = "4"
+│         USER_FIELDS.ASSIGNED_VESSEL = "1000191"
+│         USER_FIELDS.VESSEL_ABBREVIATION = "1000543"
 │
 └── app/
     ├── api/
     │   └── auth/
-    │       ├── route.ts              ← POST /api/auth (login)
+    │       ├── route.ts              ← POST /api/auth — login (Steps A–E)
     │       └── signout/
-    │           └── route.ts          ← POST /api/auth/signout (logout)
+    │           └── route.ts          ← POST /api/auth/signout — logout
     │
-    └── (auth)/
-        └── login/
-            └── page.tsx              ← Login UI page
+    ├── (auth)/
+    │   └── login/
+    │       └── page.tsx              ← Login UI — split panel, maritime design
+    │
+    └── (dashboard)/
+        ├── layout.tsx                ← Reads JWT → TopNav (server component)
+        └── dashboard/
+            └── page.tsx              ← Reads JWT → firstName greeting (server component)
 ```
 
 ---
 
-## 8. Environment Variables
+## 10. Environment Variables
 
 File: `.env.local` (never committed — gitignored)
 
@@ -313,14 +465,13 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ### Rules
-- `RAGIC_API_KEY` — pre-encoded base64 string provided by Ragic. Used directly in `Authorization: Basic <key>` header.
-- `JWT_SECRET` — minimum 32 characters. Any change invalidates all existing sessions.
-- **No `NEXT_PUBLIC_` prefix on secrets** — they must stay server-side only.
-- The API key is **never sent to the browser**. All Ragic calls go through `/api/` routes.
+- `RAGIC_API_KEY` — pre-encoded base64 string from Ragic Account Settings → API Key. Used directly in `Authorization: Basic <key>` header. Never send to browser.
+- `JWT_SECRET` — minimum 32 characters. Any change invalidates ALL existing sessions (all users get logged out).
+- **No `NEXT_PUBLIC_` prefix on secrets** — only `NEXT_PUBLIC_APP_URL` is safe client-side.
 
 ---
 
-## 9. JWT Specification
+## 11. JWT Specification
 
 | Property | Value |
 |---|---|
@@ -328,87 +479,53 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 | Expiry | 24 hours |
 | Library | `jose` (Edge-compatible) |
 | Cookie name | `riveros_token` |
-| Storage | httpOnly cookie (not localStorage) |
+| Storage | httpOnly cookie — NOT localStorage |
 
 **Payload shape:**
 ```typescript
 interface JWTPayload {
-  email: string;      // User's Ragic login email
-  name: string;       // Full name from ragic-setup/1, field "4"
-  vessel: string;     // Assigned vessel from field "1000191"
-  vesselAbbr: string; // Vessel abbreviation from field "1000543"
+  email: string;      // Ragic login email — primary identifier
+  name: string;       // Full name from ragic-setup/1 field "4"
+  vessel: string;     // Assigned vessel from field "1000191" — empty string if unassigned
+  vesselAbbr: string; // Vessel abbreviation from field "1000543" — empty string if unassigned
 }
 ```
 
-**Why httpOnly cookie over localStorage?**
-- localStorage is accessible from JavaScript → vulnerable to XSS attacks
-- httpOnly cookies cannot be read by JavaScript → XSS-safe
-- Automatically sent on every request by the browser
+**How the payload is used after login:**
+
+| Consumer | Field used | How |
+|---|---|---|
+| `(dashboard)/layout.tsx` | `name`, `email`, `vessel`, `vesselAbbr` | Passed as props to TopNav |
+| `TopNav` | `name` | Initials avatar, first name in header, full name in dropdown |
+| `TopNav` | `email` | Shown in dropdown header + profile panel |
+| `TopNav` | `vessel` | Vessel badge in header (hidden if empty) |
+| `TopNav` | `vesselAbbr` | Shown in profile panel below vessel name |
+| `dashboard/page.tsx` | `name` | firstName extracted for "Welcome back, {firstName}" |
 
 ---
 
-## 10. Route Protection (proxy.ts)
+## 12. Debug Findings (Resolved)
 
-Next.js 16 renamed `middleware.ts` → `proxy.ts` and requires the exported function to be named `proxy`.
+### Finding 1: Ragic AUTH response field name
+**Expected by docs:** `data.sessionId`
+**Actual live response:** `data.sid`
 
-```typescript
-export async function proxy(req: NextRequest) { ... }
-```
-
-**Matcher pattern** — covers all routes except static files:
-```typescript
-export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|logo.jpg|.*\\.png|.*\\.svg).*)"],
-};
-```
-
-**Public paths** (no JWT required):
-- `/login`
-- `/api/auth` and all sub-paths (includes `/api/auth/signout`)
-
-**On invalid/expired token:**
-1. Delete the cookie
-2. Redirect to `/login`
-
----
-
-## 11. Sign Out Flow
-
-```
-User clicks "Sign Out" in TopNav dropdown
-    ↓
-Client: POST /api/auth/signout
-    ↓
-Server: response.cookies.delete("riveros_token")
-    ↓
-Client: router.push("/login")
-    ↓
-proxy.ts: no cookie → redirect to /login
-```
-
----
-
-## 12. Debug Findings
-
-### Issue: Ragic AUTH response field name
-**Expected:** `data.sessionId`
-**Actual:** `data.sid`
-
-The live response from `https://eu4.ragic.com/AUTH` is:
 ```json
-{
-  "sid": "node01e9n2x660xersf5gabszt5327634615",
-  "email": "user@example.com",
-  "2fa": { "is2faLogin": false },
-  "accounts": {}
-}
+{ "sid": "node01e9n2x660xersf5gabszt5327634615", "email": "...", "2fa": { "is2faLogin": false } }
 ```
-The field is `sid`, not `sessionId`. Code was corrected to read `data?.sid`.
+**Resolution:** Code reads `data?.sid`. The `sid` value is only used to confirm password is valid. Discarded immediately.
 
-### Issue: User sheet returning "guest account" error (code 106)
-**Symptom:** `ragicRequest` to `ragic-setup/1` returns `{ status: "ERROR", code: 106 }` with HTTP 200.
-**Root cause under investigation:** API key may not be attached correctly, or key lacks sheet access permission.
-**Debug logs added to identify:** `ragicRequest` now logs `API_KEY defined`, `API_KEY length`, `API_KEY preview`, full URL, and HTTP status.
+### Finding 2: ragicRequest returning code 106
+**Symptom:** `ragicRequest("ragic-setup/1", ...)` returns `{ status: "ERROR", code: 106 }` with HTTP 200.
+**Root cause:** `RAGIC_API_KEY` in `.env.local` was either missing, malformed, or the key did not have read access to `ragic-setup/1` in Ragic's permission settings.
+**Resolution checklist:**
+1. Verify `.env.local` has `RAGIC_API_KEY=<key>` with no quotes, no spaces
+2. The key must be the base64-encoded value from Ragic Account Settings → API Key
+3. In Ragic: check that the API key user has at least read access to the `ragic-setup` sheet
+4. Restart the Next.js dev server after changing `.env.local`
+
+> **Note:** `ragic.ts` still contains DEBUG console.log statements. Remove before production:
+> All lines marked `// --- DEBUG ---` through `// --- END DEBUG ---`.
 
 ---
 
@@ -417,9 +534,9 @@ The field is `sid`, not `sessionId`. Code was corrected to read `data?.sid`.
 1. **Never call Ragic from the frontend.** All Ragic requests go through `/api/` routes only.
 2. **Never expose `RAGIC_API_KEY` to the client.** No `NEXT_PUBLIC_` prefix.
 3. **Never store JWT in localStorage.** httpOnly cookie only.
-4. **JWT validation in `proxy.ts`** — not repeated per route.
-5. **One central `ragicRequest` utility** — never raw `fetch` to Ragic inline.
-6. **Never hardcode field IDs inline.** Always use named constants from `src/constants/ragic-fields.ts`.
+4. **JWT validation lives in `proxy.ts`** — not repeated per route.
+5. **One central `ragicRequest()` utility** — never raw `fetch` to Ragic inline.
+6. **Never hardcode field IDs inline.** Always use constants from `src/constants/ragic-fields.ts`.
 
 ---
 

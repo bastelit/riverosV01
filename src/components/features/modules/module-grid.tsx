@@ -3,191 +3,244 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Droplets,
-  Wrench,
-  Award,
-  Package,
-  ShieldCheck,
-  Hammer,
-  ArrowRight,
-} from "lucide-react";
-import type { ElementType } from "react";
+  IconGasStation,
+  IconTool,
+  IconCertificate,
+  IconPackages,
+  IconShieldCheck,
+  IconHammer,
+  IconArrowRight,
+} from "@tabler/icons-react";
+import type { ComponentType } from "react";
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Module configuration — every visual token lives here.
+//  To restyle a module, edit only this array.
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface ModuleConfig {
   slug: string;
   name: string;
-  description: string;
-  Icon: ElementType;
-  // Icon container gradient
-  iconGradFrom: string;
-  iconGradTo: string;
-  iconGlowColor: string;
-  iconColor: string;
-  // Card hover
-  hoverBorderColor: string;
-  hoverBoxShadow: string;
+  label: string;       // Category pill label (top-right)
+  Icon: ComponentType<{ size?: number; stroke?: number; style?: React.CSSProperties }>;
+  accent: string;      // Accent colour — icon, pill text, CTA, hover border
+  iconBg: string;      // Icon container gradient
+  iconGlow: string;    // Icon container box-shadow
+  cardWash: string;    // Subtle per-module radial overlay on card bg
+  hoverBorder: string; // Border colour on hover
+  hoverShadow: string; // Box-shadow on hover
+  pillBg: string;      // Category pill background
 }
 
 const MODULES: ModuleConfig[] = [
+  // ── FLGO — Deep Teal ──────────────────────────────────────────────────────
   {
-    slug: "flgo",
-    name: "FLGO",
-    description:
-      "Fuel & Lubrication Grade Operations — bunker tracking, measurement and reporting.",
-    Icon: Droplets,
-    iconGradFrom: "rgba(6,182,212,0.16)",
-    iconGradTo: "rgba(8,145,178,0.30)",
-    iconGlowColor: "rgba(6,182,212,0.30)",
-    iconColor: "#0891b2",
-    hoverBorderColor: "#67e8f9",
-    hoverBoxShadow:
-      "0 16px 48px rgba(6,182,212,0.18), 0 4px 16px rgba(0,0,0,0.08)",
+    slug:        "flgo",
+    name:        "FLGO",
+    label:       "Fuel Operations",
+    Icon:        IconGasStation,
+    accent:      "#0E7490",
+    iconBg:      "linear-gradient(140deg, rgba(6,182,212,0.17) 0%, rgba(8,145,178,0.32) 100%)",
+    iconGlow:    "0 2px 16px rgba(8,145,178,0.24), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(6,182,212,0.09) 0%, transparent 58%)",
+    hoverBorder: "rgba(8,145,178,0.44)",
+    hoverShadow: "0 14px 44px rgba(8,145,178,0.20), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(8,145,178,0.09)",
   },
+
+  // ── Maintenance — Navy Blue ────────────────────────────────────────────────
   {
-    slug: "maintenance",
-    name: "Maintenance",
-    description:
-      "Vessel maintenance scheduling, job orders, inspection history and task tracking.",
-    Icon: Wrench,
-    iconGradFrom: "rgba(37,99,235,0.14)",
-    iconGradTo: "rgba(29,78,216,0.26)",
-    iconGlowColor: "rgba(37,99,235,0.28)",
-    iconColor: "#2563eb",
-    hoverBorderColor: "#93c5fd",
-    hoverBoxShadow:
-      "0 16px 48px rgba(37,99,235,0.16), 0 4px 16px rgba(0,0,0,0.08)",
+    slug:        "maintenance",
+    name:        "Maintenance",
+    label:       "Vessel Upkeep",
+    Icon:        IconTool,
+    accent:      "#1D4ED8",
+    iconBg:      "linear-gradient(140deg, rgba(59,130,246,0.17) 0%, rgba(29,78,216,0.30) 100%)",
+    iconGlow:    "0 2px 16px rgba(29,78,216,0.22), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(59,130,246,0.09) 0%, transparent 58%)",
+    hoverBorder: "rgba(29,78,216,0.40)",
+    hoverShadow: "0 14px 44px rgba(29,78,216,0.18), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(29,78,216,0.08)",
   },
+
+  // ── Certificate — Deep Violet ──────────────────────────────────────────────
   {
-    slug: "certificate",
-    name: "Certificate",
-    description:
-      "Certification management, expiry tracking, compliance status and renewal alerts.",
-    Icon: Award,
-    iconGradFrom: "rgba(124,58,237,0.13)",
-    iconGradTo: "rgba(109,40,217,0.26)",
-    iconGlowColor: "rgba(124,58,237,0.28)",
-    iconColor: "#7c3aed",
-    hoverBorderColor: "#c4b5fd",
-    hoverBoxShadow:
-      "0 16px 48px rgba(124,58,237,0.16), 0 4px 16px rgba(0,0,0,0.08)",
+    slug:        "certificate",
+    name:        "Certificate",
+    label:       "Compliance",
+    Icon:        IconCertificate,
+    accent:      "#6D28D9",
+    iconBg:      "linear-gradient(140deg, rgba(139,92,246,0.16) 0%, rgba(109,40,217,0.30) 100%)",
+    iconGlow:    "0 2px 16px rgba(109,40,217,0.24), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(139,92,246,0.09) 0%, transparent 58%)",
+    hoverBorder: "rgba(109,40,217,0.40)",
+    hoverShadow: "0 14px 44px rgba(109,40,217,0.18), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(109,40,217,0.08)",
   },
+
+  // ── Material — Dark Amber ──────────────────────────────────────────────────
   {
-    slug: "material",
-    name: "Material",
-    description:
-      "Inventory control, stock level management, spare parts and materials procurement.",
-    Icon: Package,
-    iconGradFrom: "rgba(217,119,6,0.13)",
-    iconGradTo: "rgba(180,83,9,0.26)",
-    iconGlowColor: "rgba(217,119,6,0.28)",
-    iconColor: "#d97706",
-    hoverBorderColor: "#fcd34d",
-    hoverBoxShadow:
-      "0 16px 48px rgba(217,119,6,0.16), 0 4px 16px rgba(0,0,0,0.08)",
+    slug:        "material",
+    name:        "Material",
+    label:       "Inventory",
+    Icon:        IconPackages,
+    accent:      "#92400E",
+    iconBg:      "linear-gradient(140deg, rgba(217,119,6,0.17) 0%, rgba(180,83,9,0.32) 100%)",
+    iconGlow:    "0 2px 16px rgba(180,83,9,0.22), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(217,119,6,0.09) 0%, transparent 58%)",
+    hoverBorder: "rgba(180,83,9,0.40)",
+    hoverShadow: "0 14px 44px rgba(180,83,9,0.18), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(180,83,9,0.08)",
   },
+
+  // ── QHSE — Forest Green ────────────────────────────────────────────────────
   {
-    slug: "qhse",
-    name: "QHSE",
-    description:
-      "Quality, Health, Safety & Environment — audits, incident reporting and compliance.",
-    Icon: ShieldCheck,
-    iconGradFrom: "rgba(5,150,105,0.13)",
-    iconGradTo: "rgba(4,120,87,0.26)",
-    iconGlowColor: "rgba(5,150,105,0.28)",
-    iconColor: "#059669",
-    hoverBorderColor: "#6ee7b7",
-    hoverBoxShadow:
-      "0 16px 48px rgba(5,150,105,0.16), 0 4px 16px rgba(0,0,0,0.08)",
+    slug:        "qhse",
+    name:        "QHSE",
+    label:       "Safety & Quality",
+    Icon:        IconShieldCheck,
+    accent:      "#047857",
+    iconBg:      "linear-gradient(140deg, rgba(5,150,105,0.17) 0%, rgba(4,120,87,0.32) 100%)",
+    iconGlow:    "0 2px 16px rgba(4,120,87,0.24), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(5,150,105,0.09) 0%, transparent 58%)",
+    hoverBorder: "rgba(4,120,87,0.40)",
+    hoverShadow: "0 14px 44px rgba(4,120,87,0.18), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(4,120,87,0.08)",
   },
+
+  // ── Repair — Deep Rose ─────────────────────────────────────────────────────
   {
-    slug: "repair",
-    name: "Repair",
-    description:
-      "Repair work orders, docking schedules, contractor coordination and cost tracking.",
-    Icon: Hammer,
-    iconGradFrom: "rgba(225,29,72,0.12)",
-    iconGradTo: "rgba(190,18,60,0.24)",
-    iconGlowColor: "rgba(225,29,72,0.26)",
-    iconColor: "#e11d48",
-    hoverBorderColor: "#fda4af",
-    hoverBoxShadow:
-      "0 16px 48px rgba(225,29,72,0.14), 0 4px 16px rgba(0,0,0,0.08)",
+    slug:        "repair",
+    name:        "Repair",
+    label:       "Work Orders",
+    Icon:        IconHammer,
+    accent:      "#9F1239",
+    iconBg:      "linear-gradient(140deg, rgba(225,29,72,0.15) 0%, rgba(190,18,60,0.30) 100%)",
+    iconGlow:    "0 2px 16px rgba(190,18,60,0.22), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(225,29,72,0.08) 0%, transparent 58%)",
+    hoverBorder: "rgba(190,18,60,0.40)",
+    hoverShadow: "0 14px 44px rgba(190,18,60,0.16), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(190,18,60,0.08)",
   },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ModuleCard
+// ─────────────────────────────────────────────────────────────────────────────
 
 function ModuleCard({ mod }: { mod: ModuleConfig }) {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <Link href={`/dashboard/${mod.slug}`} className="block">
+    <Link href={`/dashboard/${mod.slug}`} className="block h-full">
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="group relative rounded-2xl border p-6 cursor-pointer"
+        className="relative overflow-hidden rounded-2xl border h-full flex flex-col cursor-pointer"
         style={{
-          background: "linear-gradient(158deg, #ffffff 0%, #f8faff 100%)",
-          borderColor: hovered ? mod.hoverBorderColor : "rgba(226,232,240,0.8)",
-          boxShadow: hovered
-            ? mod.hoverBoxShadow
-            : "0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)",
-          transform: hovered ? "translateY(-4px)" : "translateY(0)",
-          transition: "transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out",
+          background:   "linear-gradient(158deg, #ffffff 0%, #f8fafd 100%)",
+          borderColor:  hovered ? mod.hoverBorder : "rgba(15,23,42,0.08)",
+          boxShadow:    hovered
+            ? mod.hoverShadow
+            : "0 1px 3px rgba(15,23,42,0.04), 0 6px 22px rgba(15,23,42,0.06)",
+          transform:    hovered ? "translateY(-5px)" : "translateY(0px)",
+          transition:
+            "transform 220ms cubic-bezier(0.22,1,0.36,1), box-shadow 220ms ease-out, border-color 220ms ease-out",
         }}
       >
-        {/* Icon container */}
+        {/* Per-module radial wash — identifies each card by colour at a glance */}
         <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
-          style={{
-            background: `linear-gradient(135deg, ${mod.iconGradFrom} 0%, ${mod.iconGradTo} 100%)`,
-            boxShadow: `0 4px 14px ${mod.iconGlowColor}`,
-            transform: hovered ? "scale(1.08)" : "scale(1)",
-            transition: "transform 200ms ease-out",
-          }}
-        >
-          <mod.Icon size={26} color={mod.iconColor} strokeWidth={1.75} />
-        </div>
-
-        {/* Module name */}
-        <h3 className="text-[16px] font-bold text-slate-900 mb-2 tracking-tight">
-          {mod.name}
-        </h3>
-
-        {/* Description */}
-        <p className="text-[13px] text-slate-400 leading-relaxed">
-          {mod.description}
-        </p>
-
-        {/* Divider */}
-        <div
-          className="border-t my-5"
-          style={{ borderColor: "rgba(226,232,240,0.6)" }}
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: mod.cardWash }}
         />
 
-        {/* CTA row */}
-        <div
-          className="flex items-center gap-1.5"
-          style={{ color: mod.iconColor }}
-        >
-          <span className="text-[12px] font-semibold tracking-wide">
-            Open module
-          </span>
-          <ArrowRight
-            size={13}
-            strokeWidth={2.5}
+        {/* ── Card body ──────────────────────────────────────────── */}
+        <div className="relative z-10 p-8 flex flex-col flex-1">
+
+          {/* Row 1 — Icon (64 px) + Category pill */}
+          <div className="flex items-start justify-between mb-8">
+
+            {/* Icon container — enlarged to 64 × 64 */}
+            <div
+              className="w-16 h-16 rounded-[14px] flex items-center justify-center flex-shrink-0"
+              style={{
+                background: mod.iconBg,
+                boxShadow:  mod.iconGlow,
+                transform:  hovered ? "scale(1.10)" : "scale(1)",
+                transition: "transform 220ms cubic-bezier(0.22,1,0.36,1)",
+              }}
+            >
+              <mod.Icon
+                size={30}
+                stroke={1.5}
+                style={{ color: mod.accent }}
+              />
+            </div>
+
+            {/* Category label pill */}
+            <span
+              className="text-[11px] font-semibold tracking-wide px-2.5 py-[5px] rounded-full leading-none mt-1"
+              style={{
+                color:      mod.accent,
+                background: mod.pillBg,
+              }}
+            >
+              {mod.label}
+            </span>
+          </div>
+
+          {/* Module name — prominent, 22 px bold */}
+          <h3
+            className="text-[22px] font-bold tracking-tight leading-tight"
+            style={{ color: "#0f172a" }}
+          >
+            {mod.name}
+          </h3>
+
+          {/* Spacer — keeps CTA pinned to bottom of every card */}
+          <div className="flex-1 min-h-[28px]" />
+
+          {/* Gradient divider */}
+          <div
+            className="mb-5"
             style={{
-              transform: hovered ? "translateX(3px)" : "translateX(0)",
-              transition: "transform 200ms ease-out",
+              height:     "1px",
+              background: "linear-gradient(90deg, rgba(15,23,42,0.09) 0%, transparent 72%)",
             }}
           />
+
+          {/* CTA row */}
+          <div
+            className="flex items-center gap-1.5"
+            style={{ color: mod.accent }}
+          >
+            <span className="text-[12px] font-semibold tracking-wide">
+              Open module
+            </span>
+            <IconArrowRight
+              size={14}
+              stroke={2.5}
+              style={{
+                transform:  hovered ? "translateX(4px)" : "translateX(0px)",
+                transition: "transform 220ms cubic-bezier(0.22,1,0.36,1)",
+              }}
+            />
+          </div>
+
         </div>
       </div>
     </Link>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  ModuleGrid
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ModuleGrid() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {MODULES.map((mod) => (
         <ModuleCard key={mod.slug} mod={mod} />
       ))}

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useVesselStore } from "@/store/vessel-store";
 import { Eye, EyeOff, Loader2, Ship } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const setAll = useVesselStore((s) => s.setAll);
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -51,6 +53,11 @@ export default function LoginPage() {
         setServerError(data.error ?? "Login failed. Please try again.");
         return;
       }
+      setAll({
+        vesselList: data.vesselList ?? [],
+        tanks: data.tanks ?? [],
+        assignedVessel: data.assignedVessel ?? "",
+      });
       router.push("/dashboard");
     } catch {
       setServerError("Unable to connect. Please check your network.");

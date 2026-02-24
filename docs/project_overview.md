@@ -2,122 +2,188 @@
 
 Maritime Operations Web Application — custom UI layer over Ragic database.
 
+> **Last updated:** 2026-02-24
+> **Auth status:** ✅ COMPLETE
+
 ---
 
 ## What This Project Is
 
+**RIVEROS** (River Operations System) is built for **River Advice — Competence on Inland Waterways**.
+
 Ragic is used as the database backend. Ragic provides its own interface but it is not suitable for operational use.
-This project replaces the Ragic native UI with a fast, multilingual, role-aware custom web application
-built on Next.js — while keeping Ragic as the single source of truth for all data.
+This project replaces the Ragic native UI with a fast, custom web application built on Next.js —
+while keeping Ragic as the single source of truth for all data.
+
+- **Ragic account:** `https://eu4.ragic.com/rtoperations` (EU4 region)
+- **No separate SQL/Postgres/MongoDB database.** All data lives in Ragic sheets.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| Framework | Next.js 16 (App Router) | Pages, routing, server proxy, API routes |
-| Build | Turbopack | Fast dev server (`next dev --turbopack`) |
-| Language | TypeScript | Type safety across frontend and backend |
-| Styling | Tailwind CSS + Shadcn/ui | UI primitives and utility classes |
-| SCSS | Sass | Available for complex styles if needed |
-| Forms | React Hook Form + Zod | Form state, validation, schema reuse |
-| State | Zustand | Client-side cache + UI state |
-| HTTP | Axios | Centralized HTTP client (`createApiAction`) |
-| i18n | next-intl | English and German translations |
-| Icons | Lucide React | Icon system |
-| Database | Ragic (external) | All persistent data, accessed via REST API |
+| Layer | Technology | Version | Status |
+|---|---|---|---|
+| Framework | Next.js (App Router) | 16.1.6 | In use |
+| Build | Turbopack | (bundled) | Dev server |
+| Language | TypeScript | 5 | In use |
+| Styling | Tailwind CSS | v4 | In use |
+| UI Components | shadcn/ui (New York, neutral) | Latest | In use |
+| Forms | React Hook Form + Zod | Latest | In use (login) |
+| JWT | `jose` | Latest | In use (Edge-compatible) |
+| Icons | Lucide React | Latest | In use |
+| Fonts | Geist Sans / Geist Mono | (Next.js bundled) | In use |
+| Utilities | clsx + tailwind-merge (`cn()`) | Latest | In use |
+| Database | Ragic (external) | REST API v3 | In use |
+| State | Zustand | 5.x | **Installed — not yet used** |
+| HTTP client | Axios | 1.x | **Installed — not yet used** |
+| i18n | next-intl | 4.x | **Installed — not yet used** |
+
+> **Note on `jose` vs `jsonwebtoken`:** `jsonwebtoken` uses Node.js crypto APIs not available
+> in the Next.js Edge Runtime. `jose` is Edge-compatible and works in both `proxy.ts`
+> (middleware) and API routes.
+
+> **Note on package.json:** All dependencies are declared in `package.json` and installed
+> in `node_modules`. Run `npm install` after cloning if `node_modules` is absent.
 
 ---
 
-## Folder Structure
+## Completion Status
+
+| Feature | Status | Notes |
+|---|---|---|
+| Auth — Login page | ✅ Done | Full UI, form validation, error handling |
+| Auth — JWT sign/verify | ✅ Done | `jose`, HS256, 24h expiry, httpOnly cookie |
+| Auth — Ragic password validation | ✅ Done | `ragicPasswordAuth()` in `src/lib/ragic.ts` |
+| Auth — User profile fetch at login | ✅ Done | Reads name, vessel, vesselAbbr from `ragic-setup/1` |
+| Auth — Route protection (proxy) | ✅ Done | `src/proxy.ts` (Next.js 16 naming) |
+| Auth — Sign out | ✅ Done | Cookie deleted, redirect to /login |
+| Dashboard shell | ✅ Done | TopNav, vessel badge, user dropdown, profile slide-over |
+| Dashboard — Module grid | ✅ Done | 6 module cards with hover interactivity |
+| Root redirect (/ → /login) | ✅ Done | `src/app/page.tsx` |
+| Module pages (stub) | ✅ Done | All 6 modules show "coming soon" placeholder |
+| Ragic proxy routes (data) | ⬜ Pending | No `/api/ragic/` data routes yet |
+| Module content (tables, forms) | ⬜ Pending | All modules are stubs |
+| Zustand stores | ⬜ Pending | Planned, not yet created |
+| Axios / createApiAction | ⬜ Pending | Planned, not yet created |
+| i18n / next-intl | ⬜ Pending | `messages/en.json` and `de.json` exist but are empty `{}` |
+| Custom hooks | ⬜ Pending | No `src/hooks/` folder yet |
+| Server actions | ⬜ Pending | No `src/actions/` folder yet |
+| TypeScript types | ⬜ Pending | No `src/types/` folder yet |
+| Zod schemas (modules) | ⬜ Pending | No `src/validations/` folder yet |
+
+---
+
+## Actual Folder Structure
 
 ```
 RIVEROS/
-├── messages/                        Translation JSON files
-│   ├── en.json                      English strings
-│   └── de.json                      German strings
 │
-├── docs/                            Project documentation (this folder)
+├── .claude/
+│   └── commands/
+│       └── nextjs-setup.md              Claude Code custom command
 │
-├── public/                          Static assets (images, logos, fonts)
+├── docs/
+│   ├── project_overview.md              ← This file
+│   ├── ragic.md                         Ragic API reference + limitations
+│   └── ragic_auth.md                    Full auth design decisions + Ragic auth docs
+│
+├── messages/                            i18n translation files (empty — not yet used)
+│   ├── en.json                          English strings  {}
+│   └── de.json                          German strings   {}
+│
+├── public/
+│   ├── logo.jpg                         River Advice company logo
+│   ├── file.svg                         Next.js default asset
+│   ├── globe.svg                        Next.js default asset
+│   ├── next.svg                         Next.js default asset
+│   ├── vercel.svg                       Next.js default asset
+│   └── window.svg                       Next.js default asset
 │
 ├── src/
+│   │
 │   ├── app/
-│   │   ├── (auth)/
-│   │   │   └── login/               Login page  →  /login
+│   │   ├── page.tsx                     Root route → redirects to /login
+│   │   ├── layout.tsx                   Root layout (Geist fonts, global CSS)
+│   │   ├── globals.css                  Tailwind CSS v4 base + shadcn CSS variables
+│   │   ├── favicon.ico
 │   │   │
-│   │   ├── (dashboard)/
-│   │   │   └── modules/             All module pages under one route group
+│   │   ├── (auth)/                      Auth route group (no shared layout)
+│   │   │   ├── layout.tsx               Passthrough layout (just renders children)
+│   │   │   └── login/
+│   │   │       └── page.tsx             ✅ Login page — /login
+│   │   │
+│   │   ├── (dashboard)/                 Dashboard route group
+│   │   │   ├── layout.tsx               ✅ Dashboard layout — reads JWT cookie,
+│   │   │   │                              renders TopNav with user data
+│   │   │   └── dashboard/
+│   │   │       ├── page.tsx             ✅ /dashboard — Welcome + ModuleGrid
 │   │   │       ├── flgo/
-│   │   │       │   ├── measurement/ Page  →  /modules/flgo/measurement
-│   │   │       │   └── bunkering/   Page  →  /modules/flgo/bunkering
-│   │   │       ├── module-2/
-│   │   │       ├── module-3/
-│   │   │       ├── module-4/
-│   │   │       ├── module-5/
-│   │   │       ├── module-6/
-│   │   │       ├── module-7/
-│   │   │       └── module-8/
+│   │   │       │   └── page.tsx         ⬜ /dashboard/flgo — "coming soon" stub
+│   │   │       ├── maintenance/
+│   │   │       │   └── page.tsx         ⬜ /dashboard/maintenance — stub
+│   │   │       ├── certificate/
+│   │   │       │   └── page.tsx         ⬜ /dashboard/certificate — stub
+│   │   │       ├── material/
+│   │   │       │   └── page.tsx         ⬜ /dashboard/material — stub
+│   │   │       ├── qhse/
+│   │   │       │   └── page.tsx         ⬜ /dashboard/qhse — stub
+│   │   │       └── repair/
+│   │   │           └── page.tsx         ⬜ /dashboard/repair — stub
 │   │   │
 │   │   └── api/
-│   │       └── ragic/               Proxy layer — Next.js backend to Ragic
-│   │           ├── flgo/
-│   │           │   ├── measurement/ Route handler for Measurement API calls
-│   │           │   └── bunkering/
-│   │           ├── module-2/
-│   │           └── ...
+│   │       └── auth/
+│   │           ├── route.ts             ✅ POST /api/auth — login handler
+│   │           └── signout/
+│   │               └── route.ts         ✅ POST /api/auth/signout — logout handler
 │   │
 │   ├── components/
-│   │   ├── ui/                      Shadcn primitives (Button, Input, Badge...)
+│   │   ├── ui/                          shadcn/ui primitives (do not hand-edit)
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── form.tsx
+│   │   │   ├── input.tsx
+│   │   │   └── label.tsx
+│   │   │
 │   │   ├── global/
-│   │   │   ├── forms/               GlobalFormProvider, FormField, FormSelect
-│   │   │   └── layout/              AppShell, Sidebar, TopNav
+│   │   │   └── layout/
+│   │   │       └── top-nav.tsx          ✅ TopNav — sticky header, vessel badge,
+│   │   │                                  user dropdown, profile slide-over, sign out
+│   │   │
 │   │   └── features/
-│   │       └── modules/             Feature components — ALL modules under one roof
-│   │           ├── flgo/
-│   │           │   ├── measurement/
-│   │           │   └── bunkering/
-│   │           └── module-2/ ...
+│   │       └── modules/
+│   │           └── module-grid.tsx      ✅ Dashboard module card grid (6 modules)
+│   │
+│   ├── constants/
+│   │   └── ragic-fields.ts              ✅ Sheet paths + field ID constants
+│   │                                      SHEETS.USERS, USER_FIELDS.*
 │   │
 │   ├── lib/
-│   │   ├── api-client.ts            Single axios instance + createApiAction()
-│   │   ├── ragic.ts                 Ragic base URL + API key (server-only)
-│   │   └── utils.ts                 cn() helper (clsx + tailwind-merge)
+│   │   ├── auth.ts                      ✅ JWT sign/verify using jose
+│   │   │                                  signToken(), verifyToken(), COOKIE_NAME
+│   │   ├── ragic.ts                     ✅ Ragic HTTP utility (server-only)
+│   │   │                                  ragicRequest(), ragicPasswordAuth()
+│   │   └── utils.ts                     ✅ cn() helper (clsx + tailwind-merge)
 │   │
-│   ├── hooks/                       Custom hooks — data fetching per module
-│   │   ├── flgo/
-│   │   │   ├── use-measurement.ts
-│   │   │   └── use-bunkering.ts
-│   │   └── module-2/ ...
-│   │
-│   ├── actions/                     Server Actions — mutations per module
-│   │   ├── flgo/
-│   │   │   ├── measurement.actions.ts
-│   │   │   └── bunkering.actions.ts
-│   │   └── module-2/ ...
-│   │
-│   ├── store/                       Zustand stores — cache + UI state
-│   │   └── measurement.store.ts     (one store per module)
-│   │
-│   ├── types/                       TypeScript interfaces
-│   │   ├── ragic.ts                 Ragic response shapes
-│   │   └── modules/
-│   │       └── flgo.ts
-│   │
-│   ├── validations/                 Zod schemas — shared frontend + server
-│   │   └── modules/
-│   │       └── flgo.ts
-│   │
-│   ├── i18n/
-│   │   └── routing.ts               next-intl locale config (en, de)
+│   ├── proxy.ts                         ✅ Route protection (Next.js 16 middleware)
+│   │                                      Exported as proxy() not middleware()
+│   │                                      Public paths: /login, /api/auth
 │   │
 │   └── styles/
-│       └── globals.scss             Global SCSS (available if Tailwind is not enough)
+│       └── globals.scss                 Global SCSS (available for complex styles)
 │
-├── .env.example                     Template — copy to .env and fill values
-├── components.json                  Shadcn configuration
-└── middleware.ts                    next-intl locale routing middleware
+├── .env.example                         Template — copy to .env.local and fill values
+├── .env.local                           ← Real secrets (gitignored)
+├── .gitignore
+├── components.json                      shadcn/ui config (New York, neutral, RSC)
+├── eslint.config.mjs
+├── next.config.ts                       Next.js config (currently default/empty)
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.mjs
+├── README.md
+└── tsconfig.json
 ```
 
 ---
@@ -128,196 +194,266 @@ RIVEROS/
 ┌─────────────────────────────────────────────────────────────────┐
 │  LAYER 1 — BROWSER (Client)                                     │
 │                                                                 │
-│   React Components                                              │
-│   ├── Read UI state from Zustand store                          │
-│   ├── Read cached data from Zustand store                       │
-│   ├── Call hook functions (fetch, create, update, delete)       │
+│   React Components (Client or Server)                           │
+│   ├── Server components read JWT from cookie server-side        │
+│   ├── Client components use React Hook Form, local state        │
+│   ├── [Future] Read cached data from Zustand store              │
 │   └── Render output                                             │
-│                                                                 │
-│   Zustand Store                                                 │
-│   ├── Cached Ragic data (avoids repeat API calls)               │
-│   ├── UI state (modal open, selected row, active tab)           │
-│   ├── Request state (isLoading, isSubmitting, error)            │
-│   └── hasFetched flag (skip fetch if data already in cache)     │
 └────────────────────────┬────────────────────────────────────────┘
-                         │  axios via createApiAction()
-                         │  calls /api/ragic/...
+                         │  fetch() / axios (planned)
+                         │  calls /api/auth or /api/ragic/...
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  LAYER 2 — NEXT.JS SERVER (Proxy)                               │
+│  LAYER 2 — NEXT.JS SERVER (API Routes + Proxy)                  │
 │                                                                 │
-│   /api/ragic/flgo/measurement/route.ts                          │
-│   ├── Receives request from browser                             │
-│   ├── Reads RAGIC_API_KEY from process.env (never sent to       │
-│   │   browser — this is why the proxy exists)                   │
-│   ├── Forwards request to Ragic REST API                        │
-│   └── Returns Ragic response to the browser                     │
+│   /api/auth/route.ts       — validates credentials, issues JWT  │
+│   /api/auth/signout/       — deletes cookie                     │
+│   [Future] /api/ragic/**   — proxy to Ragic data API           │
+│                                                                 │
+│   proxy.ts (middleware)    — JWT verification on every request  │
 └────────────────────────┬────────────────────────────────────────┘
                          │  HTTPS with Authorization header
-                         │  Basic Auth: API Key
+                         │  Basic Auth: RAGIC_API_KEY
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  LAYER 3 — RAGIC (Database)                                     │
 │                                                                 │
-│   https://ap12.ragic.com/{account}/{tab}/{sheet_index}          │
-│   ├── GET    → returns records as JSON                          │
-│   ├── POST   → creates new record                               │
-│   ├── PUT    → updates existing record                          │
-│   └── DELETE → deletes record                                   │
+│   https://eu4.ragic.com/rtoperations/{tab}/{sheet_index}        │
+│   ├── AUTH endpoint   → validates user credentials              │
+│   ├── ragic-setup/1   → users sheet (name, vessel info)         │
+│   ├── GET             → returns records as JSON (keyed by ID)   │
+│   ├── POST            → creates new record                      │
+│   ├── PUT             → updates existing record (merge)         │
+│   └── DELETE          → deletes record                          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Data Flow — Read (GET)
+## Auth Flow (Completed) — Step by Step
 
 ```
-1.  Component mounts
-        │
-        ▼
-2.  Hook runs → checks Zustand: hasFetched = false?
-        │  YES — no data yet
-        ▼
-3.  createApiAction('get', '/flgo/measurement')
-        │  calls axios → hits /api/ragic/flgo/measurement
-        ▼
-4.  Next.js proxy route
-        │  adds Authorization: Basic {RAGIC_API_KEY}
-        │  forwards to Ragic
-        ▼
-5.  Ragic returns JSON array of records
-        ▼
-6.  Hook calls setMeasurements(data) → saved in Zustand
-        │  hasFetched = true
-        ▼
-7.  Component re-renders → table shows data
-
---- user navigates away and comes back ---
-
-1.  Component mounts again
-        │
-        ▼
-2.  Hook runs → checks Zustand: hasFetched = true
-        │  data already in cache
-        ▼
-3.  Table renders instantly from Zustand ← NO API call made
-```
-
----
-
-## Data Flow — Write (POST / PUT / DELETE)
-
-```
-1.  User fills form and clicks Save
-        │
-        ▼
-2.  Zod schema validates form data (client-side)
-        │  invalid → show field errors, stop here
-        │  valid → continue
-        ▼
-3.  Hook function called (e.g. updateMeasurement)
-        │
-        ▼
-4.  isSubmitting = true in Zustand → button disables (prevents double click)
-        │
-        ▼
-5.  createApiAction('put', '/flgo/measurement/123', data)
-        │  axios → /api/ragic/flgo/measurement/123
-        ▼
-6.  Next.js proxy → adds API key → PUT to Ragic
-        │
-        ▼
-        ├── SUCCESS ──────────────────────────────────────────────
-        │   Ragic returns updated record
-        │       ▼
-        │   updateMeasurementInStore(id, updatedRecord)
-        │       Zustand updates the record in the array in place
-        │       NO refetch from Ragic needed
-        │       ▼
-        │   closeEditModal() → modal closes
-        │   isSubmitting = false → button re-enables
-        │   UI shows new data instantly
-        │
-        └── FAILURE ──────────────────────────────────────────────
-            Network error or Ragic error
-                ▼
-            Zustand store unchanged — old data preserved
-                ▼
-            submitError = 'Update failed. Please retry.'
-            isSubmitting = false → button re-enables
-            Modal stays open with user's typed values
-                ▼
-            User clicks Save again → retries safely
+1.  User visits / → proxy.ts → no cookie → redirect /login
+         │
+         ▼
+2.  User fills email + password on /login
+    React Hook Form + Zod validates client-side
+         │
+         ▼
+3.  POST /api/auth  { email, password }
+         │
+         ▼  STEP A — Validate credentials
+4.  ragicPasswordAuth(email, password)
+    → GET https://eu4.ragic.com/AUTH?u=email&p=pwd&login_type=sessionId&json=1&api=
+    → Returns { sid: "..." } on success, or -1 on failure
+    → If -1: return 401 "Invalid email or password"
+         │
+         ▼  STEP B — Fetch user profile
+5.  ragicRequest("ragic-setup/1", { params: { where: "1,eq,<email>" } })
+    → Authorization: Basic <RAGIC_API_KEY>
+    → Returns sheet rows as object keyed by record ID
+    → Extracts: name (field "4"), vessel (field "1000191"), vesselAbbr (field "1000543")
+    → If user not in sheet: empty strings — login still succeeds
+         │
+         ▼  STEP C — Issue JWT
+6.  signToken({ email, name, vessel, vesselAbbr })
+    → jose SignJWT, algorithm HS256, expiry 24h
+    → Cookie: riveros_token, httpOnly, sameSite:lax, secure:prod, maxAge:86400
+         │
+         ▼
+7.  Client receives { ok: true } → router.push("/dashboard")
+         │
+         ▼
+8.  proxy.ts intercepts /dashboard request
+    → reads riveros_token cookie
+    → verifyToken() with JWT_SECRET
+    → valid → allow through
+         │
+         ▼
+9.  (dashboard)/layout.tsx — server component
+    → reads cookie, verifies token
+    → passes { name, email, vessel, vesselAbbr } to TopNav
+         │
+         ▼
+10. Dashboard renders with user's name, vessel badge in TopNav
 ```
 
 ---
 
-## Zustand Store — What Lives Where
+## Auth — Key Files
 
+| File | Role |
+|---|---|
+| `src/proxy.ts` | Route protection — intercepts all requests, verifies JWT, redirects unauthenticated users to /login |
+| `src/lib/auth.ts` | `signToken()`, `verifyToken()`, exports `COOKIE_NAME = "riveros_token"` |
+| `src/lib/ragic.ts` | `ragicRequest()` — central Ragic API utility (server-only). `ragicPasswordAuth()` — credential validation |
+| `src/constants/ragic-fields.ts` | Named constants for all sheet paths and field IDs |
+| `src/app/api/auth/route.ts` | POST /api/auth — orchestrates login (Steps A-C above) |
+| `src/app/api/auth/signout/route.ts` | POST /api/auth/signout — deletes cookie |
+| `src/app/(auth)/login/page.tsx` | Login UI — split-panel design, maritime theme |
+
+---
+
+## Dashboard — What Exists
+
+### TopNav (`src/components/global/layout/top-nav.tsx`)
+- Sticky header with RIVEROS brand
+- Vessel badge (shows assigned vessel from JWT)
+- User dropdown: name initials, name, email, Profile, Settings, Sign Out
+- Profile slide-over panel: avatar with initials, email row, vessel row with abbreviation
+- Keyboard: Escape closes profile panel
+- Click outside closes dropdown
+- Sign out: POST /api/auth/signout → router.push("/login")
+
+### Dashboard Page (`src/app/(dashboard)/dashboard/page.tsx`)
+- Server component — reads JWT cookie, extracts first name
+- Greeting: "Welcome back, {firstName}"
+- Renders `<ModuleGrid />` client component
+
+### Module Grid (`src/components/features/modules/module-grid.tsx`)
+6 modules defined, each as a card linking to `/dashboard/{slug}`:
+
+| Slug | Name | Icon | Color Theme |
+|---|---|---|---|
+| `flgo` | FLGO | Droplets | Cyan |
+| `maintenance` | Maintenance | Wrench | Blue |
+| `certificate` | Certificate | Award | Purple |
+| `material` | Material | Package | Amber |
+| `qhse` | QHSE | ShieldCheck | Green |
+| `repair` | Repair | Hammer | Red |
+
+Each card: hover lift + border color change + icon scale, "Open module" CTA with arrow.
+
+### Module Stub Pages
+All 6 module pages exist with a back link, icon, title, and "Module content coming soon." placeholder.
+
+---
+
+## What Needs To Be Built Next
+
+### 1. Ragic Data Proxy Routes
+For each module, create `src/app/api/ragic/{module}/route.ts`:
+- Read `RAGIC_BASE_URL` and `RAGIC_API_KEY` from `process.env`
+- Append `?v=3&api&naming=EID`
+- Set `Authorization: Basic {API_KEY}`
+- Convert Ragic object response → array with `Object.values()`
+- Map Ragic field IDs → camelCase TypeScript keys (normalization)
+- Never expose API key in responses
+
+### 2. Zustand Stores (`src/store/`)
+One store per module:
+- `measurements: T[]` + `hasFetched: boolean` (data cache)
+- `isLoading`, `isSubmitting`, `error`, `submitError` (request state)
+- `selectedRecord`, `isEditModalOpen`, etc. (UI state)
+
+### 3. Custom Hooks (`src/hooks/`)
+One hook per module task — fetch + mutate:
+- On mount: check `hasFetched` → if false, call proxy route → populate store
+- `updateRecord()`, `createRecord()` etc. → update store on success, preserve on failure
+
+### 4. TypeScript Types (`src/types/modules/`)
+One file per module — interfaces matching Ragic sheet fields.
+
+### 5. Zod Schemas (`src/validations/modules/`)
+One file per module — shared between frontend validation and server-side processing.
+
+### 6. Module UI Components (`src/components/features/modules/`)
+Per module: table, form, detail panel, edit modal.
+
+### 7. i18n (next-intl)
+- `messages/en.json` and `messages/de.json` are empty — need to be populated
+- `src/i18n/routing.ts` needs to be created
+- `proxy.ts` needs locale routing logic added
+
+---
+
+## Environment Variables
+
+File: `.env.local` — never committed (gitignored).
+
+```env
+# Ragic
+RAGIC_BASE_URL=https://eu4.ragic.com/rtoperations
+RAGIC_API_KEY=<base64-encoded-api-key>    # Pre-encoded, used directly in Authorization: Basic header
+
+# Auth
+JWT_SECRET=<min-32-char-random-string>    # Changing this invalidates ALL existing sessions
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
-┌──────────────────────────────────────────────────────┐
-│  measurement.store.ts                                │
-│                                                      │
-│  SERVER DATA (cache)                                 │
-│  ├── measurements: Measurement[]   ← Ragic records   │
-│  └── hasFetched: boolean           ← skip re-fetch   │
-│                                                      │
-│  REQUEST STATE                                       │
-│  ├── isLoading: boolean            ← page spinner    │
-│  ├── isSubmitting: boolean         ← form button     │
-│  ├── error: string | null          ← fetch error     │
-│  └── submitError: string | null    ← mutation error  │
-│                                                      │
-│  UI STATE                                            │
-│  ├── selectedMeasurement           ← clicked row     │
-│  ├── isEditModalOpen: boolean      ← modal visible   │
-│  └── activeFilter: string          ← active tab      │
-└──────────────────────────────────────────────────────┘
 
-RULE: Server data (Ragic records) lives in Zustand as a cache.
-      After a successful mutation Zustand is updated directly.
-      Ragic is NOT re-fetched unless the user explicitly refreshes.
-      If mutation fails, Zustand is untouched — old data is preserved for retry.
+### Rules
+- `RAGIC_API_KEY` — never expose to browser. No `NEXT_PUBLIC_` prefix.
+- `JWT_SECRET` — minimum 32 characters. Server-side only.
+- Only `NEXT_PUBLIC_APP_URL` is safe to use in client code.
+
+---
+
+## Ragic Field IDs (Auth-Related)
+
+Sheet: `ragic-setup/1`
+
+| Field | Field ID | Value in JWT |
+|---|---|---|
+| Email | `"1"` | `email` |
+| Name | `"4"` | `name` |
+| Assigned Vessel | `"1000191"` | `vessel` |
+| Vessel Abbreviation | `"1000543"` | `vesselAbbr` |
+
+---
+
+## Security Rules (Non-Negotiable)
+
+1. **Never call Ragic from the frontend.** All Ragic requests go through `/api/` routes only.
+2. **Never expose `RAGIC_API_KEY` to the client.** No `NEXT_PUBLIC_` prefix.
+3. **Never store JWT in localStorage.** httpOnly cookie only (`riveros_token`).
+4. **JWT validation lives in `proxy.ts`** — not repeated per route.
+5. **One central `ragicRequest()` utility** — never raw `fetch` to Ragic inline.
+6. **Never hardcode field IDs inline.** Always use constants from `src/constants/ragic-fields.ts`.
+
+---
+
+## Important Implementation Notes
+
+### Next.js 16 Middleware Renamed
+In Next.js 16, `middleware.ts` is renamed to `proxy.ts`.
+The exported function must be named `proxy` (not `middleware`).
+See: https://nextjs.org/docs/messages/middleware-to-proxy
+
+### Ragic GET Response Is an Object, Not an Array
+```json
+{ "1001": { ...fields }, "1002": { ...fields } }
+```
+Always call `Object.values(ragicData)` in proxy routes before sending to frontend.
+
+### Ragic Uses Field IDs with `naming=EID`
+Always append `&naming=EID` to use numeric field IDs as response keys (not display labels).
+This makes normalization predictable and immune to label changes in Ragic.
+
+### Ragic Returns HTTP 200 for Errors
+Always check the response body for `{ status: "ERROR", code: 106 }` — do not rely on HTTP status alone.
+Error code 106 = Authorization header missing or API key lacks sheet access.
+
+### Ragic AUTH Response
+The live response field is `sid` (not `sessionId`):
+```json
+{ "sid": "node01e9n2x660xersf5gabszt5327634615", "email": "...", "2fa": { ... } }
 ```
 
 ---
 
-## i18n — How Translations Work
+## Running the Project
 
+```bash
+# First time setup
+cp .env.example .env.local     # fill in RAGIC_BASE_URL, RAGIC_API_KEY, JWT_SECRET
+
+npm install
+npm run dev                    # starts dev server at http://localhost:3000
+npm run build                  # production build
+npm run lint                   # ESLint
 ```
-messages/
-├── en.json    { "flgo": { "measurement": { "title": "Measurement" } } }
-└── de.json    { "flgo": { "measurement": { "title": "Messung" } } }
-
-src/i18n/routing.ts     → defines locales: ['en', 'de'], defaultLocale: 'en'
-middleware.ts           → intercepts requests, routes /en/... or /de/...
-
-In components:
-  const t = useTranslations('flgo.measurement')
-  <h1>{t('title')}</h1>   → "Measurement" or "Messung" depending on locale
-```
-
----
-
-## Module Structure — All 8 Under One Roof
-
-```
-src/components/features/modules/
-├── flgo/
-│   ├── measurement/     MeasurementTable, MeasurementForm, MeasurementDetailPanel
-│   └── bunkering/       BunkeringTable, BunkeringForm ...
-├── module-2/
-├── module-3/
-├── module-4/
-├── module-5/
-├── module-6/
-├── module-7/
-└── module-8/
-```
-
-Every module follows the same pattern. The folder is the boundary.
-Components for FLGO Measurement never cross into FLGO Bunkering.
-Both pull shared primitives from `components/ui/` and `components/global/`.
 
 ---
 
@@ -325,284 +461,29 @@ Both pull shared primitives from `components/ui/` and `components/global/`.
 
 | What you are building | Where it goes |
 |---|---|
-| New UI primitive (button, badge, spinner) | `src/components/ui/` |
-| App shell, sidebar, top nav | `src/components/global/layout/` |
-| Form system, form fields | `src/components/global/forms/` |
-| FLGO Measurement component | `src/components/features/modules/flgo/measurement/` |
-| Any module page | `src/app/(dashboard)/modules/<module>/page.tsx` |
-| Ragic proxy route for a module | `src/app/api/ragic/<module>/route.ts` |
-| axios instance and createApiAction | `src/lib/api-client.ts` |
-| Ragic config — base URL, API key | `src/lib/ragic.ts` |
-| Data hook for a module | `src/hooks/<module>/use-<task>.ts` |
-| Server Action (mutation needing revalidation) | `src/actions/<module>/<task>.actions.ts` |
-| Zustand store | `src/store/<module>.store.ts` |
-| Zod schema | `src/validations/modules/<module>.ts` |
-| TypeScript interfaces | `src/types/modules/<module>.ts` |
-| Translation strings | `messages/en.json` and `messages/de.json` |
-| Pure helper function | `src/lib/utils.ts` |
+| New UI primitive (button, badge, spinner) | `src/components/ui/` (via shadcn) |
+| App-wide layout (header, nav) | `src/components/global/layout/` |
+| Feature component for a module | `src/components/features/modules/{module}/` |
+| Module page | `src/app/(dashboard)/dashboard/{module}/page.tsx` |
+| Ragic proxy route for a module | `src/app/api/ragic/{module}/route.ts` |
+| JWT utilities | `src/lib/auth.ts` |
+| Ragic API utility | `src/lib/ragic.ts` |
+| Pure helper (cn, etc.) | `src/lib/utils.ts` |
+| Sheet paths + field IDs | `src/constants/ragic-fields.ts` |
+| Route protection / middleware | `src/proxy.ts` |
+| Data hook for a module | `src/hooks/{module}/use-{task}.ts` |
+| Zustand store | `src/store/{module}.store.ts` |
+| Zod schema | `src/validations/modules/{module}.ts` |
+| TypeScript interfaces | `src/types/modules/{module}.ts` |
+| Translation strings | `messages/en.json` + `messages/de.json` |
 
 ---
 
-## Complete Example Workflow — FLGO Measurement
+## Docs In This Folder
 
-This is a full end-to-end trace of the Measurement module:
-- User opens the page → sees a list of measurements
-- Clicks a row → detail panel opens
-- Clicks Edit → modal opens with pre-filled form
-- Changes quantity → saves → list updates instantly
-
----
-
-### Files Involved
-
-```
-src/types/modules/flgo.ts                              Interface
-src/validations/modules/flgo.ts                        Zod schema
-src/store/measurement.store.ts                         Zustand cache + UI state
-src/lib/api-client.ts                                  axios dispatcher
-src/app/api/ragic/flgo/measurement/route.ts            Proxy to Ragic
-src/hooks/flgo/use-measurement.ts                      Data hook
-src/components/features/modules/flgo/measurement/      UI components
-src/app/(dashboard)/modules/flgo/measurement/page.tsx  Page
-messages/en.json                                       English text
-messages/de.json                                       German text
-```
-
----
-
-### 1. Type Definition
-
-```ts
-// src/types/modules/flgo.ts
-export interface Measurement {
-  id: string
-  vesselName: string
-  portName: string
-  quantity: number
-  status: 'pending' | 'completed'
-  measuredAt: string
-}
-```
-
----
-
-### 2. Zod Schema (shared frontend + server)
-
-```ts
-// src/validations/modules/flgo.ts
-export const measurementSchema = z.object({
-  vesselName: z.string().min(1, 'Required'),
-  portName:   z.string().min(1, 'Required'),
-  quantity:   z.number().positive('Must be greater than 0'),
-})
-export type MeasurementFormData = z.infer<typeof measurementSchema>
-```
-
----
-
-### 3. Zustand Store
-
-```ts
-// src/store/measurement.store.ts
-export const useMeasurementStore = create<MeasurementStore>((set) => ({
-  measurements:        [],
-  hasFetched:          false,
-  isLoading:           false,
-  isSubmitting:        false,
-  error:               null,
-  submitError:         null,
-  selectedMeasurement: null,
-  isEditModalOpen:     false,
-
-  setMeasurements:          (data) => set({ measurements: data, hasFetched: true }),
-  addMeasurement:           (m)    => set((s) => ({ measurements: [...s.measurements, m] })),
-  updateMeasurementInStore: (id, updated) =>
-    set((s) => ({
-      measurements: s.measurements.map((m) => m.id === id ? updated : m),
-      selectedMeasurement: updated,
-    })),
-  setSubmitting: (v) => set({ isSubmitting: v }),
-  setError:      (e) => set({ error: e }),
-  setSubmitError:(e) => set({ submitError: e }),
-  openEditModal: ()  => set({ isEditModalOpen: true }),
-  closeEditModal:()  => set({ isEditModalOpen: false }),
-  selectMeasurement: (m) => set({ selectedMeasurement: m }),
-}))
-```
-
----
-
-### 4. Proxy Route
-
-```ts
-// src/app/api/ragic/flgo/measurement/route.ts
-export async function GET() {
-  const res = await fetch(`${process.env.RAGIC_BASE_URL}/flgo/measurement?v=3&api`, {
-    headers: { Authorization: `Basic ${process.env.RAGIC_API_KEY}` },
-  })
-  return NextResponse.json(await res.json())
-}
-
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const body = await request.json()
-  const res = await fetch(`${process.env.RAGIC_BASE_URL}/flgo/measurement/${params.id}?v=3&api`, {
-    method: 'PUT',
-    headers: { Authorization: `Basic ${process.env.RAGIC_API_KEY}` },
-    body: JSON.stringify(body),
-  })
-  return NextResponse.json(await res.json())
-}
-```
-
----
-
-### 5. Hook
-
-```ts
-// src/hooks/flgo/use-measurement.ts
-export function useMeasurements() {
-  const store = useMeasurementStore()
-
-  useEffect(() => {
-    if (store.hasFetched) return         // cache hit — skip API call
-    store.setLoading(true)
-    createApiAction<Measurement[]>('get', '/flgo/measurement')
-      .then(store.setMeasurements)
-      .catch(() => store.setError('Failed to load'))
-      .finally(() => store.setLoading(false))
-  }, [store.hasFetched])
-
-  async function updateMeasurement(id: string, data: MeasurementFormData) {
-    if (store.isSubmitting) return       // block double click
-    store.setSubmitting(true)
-    store.setSubmitError(null)
-    try {
-      const updated = await createApiAction<Measurement>('put', `/flgo/measurement/${id}`, data)
-      store.updateMeasurementInStore(id, updated)  // update cache, no refetch
-      store.closeEditModal()
-    } catch {
-      store.setSubmitError('Update failed. Your data is safe — please retry.')
-    } finally {
-      store.setSubmitting(false)
-    }
-  }
-
-  return { ...store, updateMeasurement }
-}
-```
-
----
-
-### 6. Page
-
-```ts
-// src/app/(dashboard)/modules/flgo/measurement/page.tsx
-export default function MeasurementPage() {
-  const { measurements, isLoading, error } = useMeasurements()
-  const t = useTranslations('flgo.measurement')
-
-  if (isLoading) return <Spinner />
-  if (error)     return <ErrorMessage message={error} />
-
-  return (
-    <div>
-      <h1>{t('title')}</h1>
-      <MeasurementTable data={measurements} />
-      <MeasurementDetailPanel />
-      <MeasurementEditModal />
-    </div>
-  )
-}
-```
-
----
-
-### Full Flow Diagram
-
-```
-① Page loads
-   Component mounts
-        │
-        ▼
-   useMeasurements() → hasFetched = false
-        │
-        ▼
-   createApiAction GET /flgo/measurement
-        │
-        ▼
-   /api/ragic/flgo/measurement (proxy adds API key)
-        │
-        ▼
-   Ragic returns 5 records
-        │
-        ▼
-   setMeasurements([5 records]) → Zustand cache
-   hasFetched = true
-        │
-        ▼
-   Table renders 5 rows ✅
-
-② User clicks row 3
-   selectMeasurement(row3) → Zustand
-   Detail panel reads selectedMeasurement → renders ✅
-
-③ User clicks Edit
-   openEditModal() → Zustand: isEditModalOpen = true
-   Modal reads selectedMeasurement → pre-fills form ✅
-
-④ User changes quantity 300 → 450, clicks Save
-        │
-        ▼
-   Zod validates → passes
-        │
-        ▼
-   updateMeasurement('id3', { quantity: 450 })
-        │
-        ▼
-   isSubmitting = true → button disables ✅
-        │
-        ▼
-   PUT /api/ragic/flgo/measurement/id3
-        │
-   ┌────┴────┐
-SUCCESS    FAIL
-   │           │
-   ▼           ▼
-Zustand    Zustand
-updated    unchanged
-row3=450   row3=300 (safe)
-   │           │
-   ▼           ▼
-Modal      submitError shown
-closes     Modal stays open
-Button     Button re-enables
-re-enables User retries ✅
-List
-shows 450 ✅
-```
-
----
-
-## Environment Variables
-
-```bash
-# .env  (copy from .env.example — never commit real values)
-
-RAGIC_BASE_URL=https://ap12.ragic.com/your-account   # server-only
-RAGIC_API_KEY=your_api_key_here                       # server-only — never in browser
-NEXT_PUBLIC_APP_URL=http://localhost:3000             # safe for browser
-```
-
-`RAGIC_BASE_URL` and `RAGIC_API_KEY` have no `NEXT_PUBLIC_` prefix — Next.js will never
-send them to the browser. Only proxy routes in `src/app/api/ragic/` use these.
-
----
-
-## Running the Project
-
-```bash
-cp .env.example .env       # fill in RAGIC_BASE_URL and RAGIC_API_KEY
-npm run dev                # starts with Turbopack at http://localhost:3000
-npm run build              # production build
-npm run lint               # ESLint check
-```
+| File | Contents |
+|---|---|
+| `project_overview.md` | This file — current state, structure, what's done, what's next |
+| `ragic.md` | Ragic REST API reference, limitations, and how this project handles each |
+| `ragic_auth.md` | Full auth design decisions, complete login flow step-by-step, JWT spec, debug findings |
+| `dashboard.md` | Dashboard implementation reference — layout, TopNav, ModuleGrid, design system, reuse guide |
