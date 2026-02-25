@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useVesselStore } from "@/store/vessel-store";
-import { Eye, EyeOff, Loader2, Ship } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,10 +91,16 @@ export default function LoginPage() {
           }}
         />
 
-        {/* River Advice logo — top left */}
+        {/* River Advice logo — top left (bright container so logo pops) */}
         <div className="relative z-10 p-10">
           <div className="inline-block rounded-2xl overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.10)", padding: "10px 18px" }}>
+            style={{
+              background: "rgba(255,255,255,0.94)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.80)",
+              padding: "10px 18px",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+            }}>
             <Image
               src="/logo.jpg"
               alt="River Advice"
@@ -109,15 +115,14 @@ export default function LoginPage() {
         {/* Centre branding */}
         <div className="relative z-10 px-14 pb-6">
           <div className="mb-10">
-            <p className="text-[11px] font-semibold tracking-[0.25em] uppercase text-blue-300/60 mb-4">
-              River Operations System
-            </p>
-            <h2 className="text-white font-light text-5xl leading-[1.15] mb-6">
-              Operations<br />
-              <span className="font-bold">Intelligence</span>
+            <h2 className="text-white font-bold text-5xl leading-[1.15] mb-5">
+              River Operating<br />System
             </h2>
-            <p className="text-blue-200/50 text-base leading-relaxed max-w-[340px]">
-              Manage vessel operations, fuel reporting, and maritime logistics — all in one place.
+            <p className="text-blue-100/70 text-[17px] leading-relaxed mb-4 max-w-[400px] font-light">
+              Operations Intelligence to streamline smooth operations management.
+            </p>
+            <p className="text-blue-200/45 text-sm leading-relaxed max-w-[370px]">
+              A unified platform for vessel fuel, maintenance, and compliance — built for inland waterways professionals.
             </p>
           </div>
 
@@ -162,17 +167,25 @@ export default function LoginPage() {
 
             {/* Brand heading */}
             <div className="mb-10">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg, #071e3d, #0a3d6b)" }}>
-                  <Ship className="w-5 h-5 text-white" strokeWidth={1.5} />
+              <div className="flex items-center gap-3 mb-4">
+                {/* RIVEROS Ship Icon */}
+                <div className="w-8 h-10 flex-shrink-0">
+                  <img src="/riveros-logo.jpg" alt="RIVEROS" className="w-full h-full object-contain" />
                 </div>
-                <span className="text-[22px] font-bold tracking-[0.12em] text-[#04111f]">
+                <span
+                  className="text-[34px] font-black tracking-[0.06em]"
+                  style={{
+                    background: "linear-gradient(135deg, #0e4a6e 0%, #0369a1 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
                   RIVEROS
                 </span>
               </div>
-              <h1 className="text-2xl font-semibold text-[#071e3d] mt-1">Welcome back</h1>
-              <p className="text-slate-500 text-sm mt-1">Sign in to your account to continue</p>
+              <h1 className="text-[15px] font-medium text-slate-500 mt-1">Welcome back</h1>
+              <p className="text-slate-400 text-[13px] mt-0.5">Sign in with your Ragic credentials</p>
             </div>
 
             <Form {...form}>
@@ -275,10 +288,23 @@ export default function LoginPage() {
         </div>
 
         {/* Right panel footer */}
-        <div className="px-8 pb-6 text-center lg:text-right">
-          <p className="text-[11px] text-slate-400">
-            © {new Date().getFullYear()} River Advice · All rights reserved
-          </p>
+        <div className="px-8 pb-6 flex items-center justify-center lg:justify-end">
+          <a
+            href="https://www.saatwika.de/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 hover:opacity-70 transition-opacity cursor-pointer"
+          >
+            <div
+              className="w-[30px] h-[30px] rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: "#0369a1", boxShadow: "0 2px 8px rgba(3,105,161,0.30)" }}
+            >
+              <img src="/saatwika-logo.png" alt="Saatwika UG" width={18} height={18} style={{ objectFit: "contain" }} />
+            </div>
+            <span className="text-[13px] text-slate-400">
+              Made with 💙 by <span className="font-bold text-[#0369a1]">Saatwika UG</span>
+            </span>
+          </a>
         </div>
       </div>
 

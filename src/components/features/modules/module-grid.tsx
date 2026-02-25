@@ -33,19 +33,19 @@ interface ModuleConfig {
 }
 
 const MODULES: ModuleConfig[] = [
-  // ── FLGO — Deep Teal ──────────────────────────────────────────────────────
+  // ── Repair — Deep Rose ─────────────────────────────────────────────────────
   {
-    slug:        "flgo",
-    name:        "FLGO",
-    label:       "Fuel Operations",
-    Icon:        IconGasStation,
-    accent:      "#0E7490",
-    iconBg:      "linear-gradient(140deg, rgba(6,182,212,0.17) 0%, rgba(8,145,178,0.32) 100%)",
-    iconGlow:    "0 2px 16px rgba(8,145,178,0.24), inset 0 1px 0 rgba(255,255,255,0.60)",
-    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(6,182,212,0.09) 0%, transparent 58%)",
-    hoverBorder: "rgba(8,145,178,0.44)",
-    hoverShadow: "0 14px 44px rgba(8,145,178,0.20), 0 4px 14px rgba(0,0,0,0.06)",
-    pillBg:      "rgba(8,145,178,0.09)",
+    slug:        "repair",
+    name:        "Repair",
+    label:       "Work Orders",
+    Icon:        IconHammer,
+    accent:      "#9F1239",
+    iconBg:      "linear-gradient(140deg, rgba(225,29,72,0.15) 0%, rgba(190,18,60,0.30) 100%)",
+    iconGlow:    "0 2px 16px rgba(190,18,60,0.22), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(225,29,72,0.08) 0%, transparent 58%)",
+    hoverBorder: "rgba(190,18,60,0.40)",
+    hoverShadow: "0 14px 44px rgba(190,18,60,0.16), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(190,18,60,0.08)",
   },
 
   // ── Maintenance — Navy Blue ────────────────────────────────────────────────
@@ -63,21 +63,6 @@ const MODULES: ModuleConfig[] = [
     pillBg:      "rgba(29,78,216,0.08)",
   },
 
-  // ── Certificate — Deep Violet ──────────────────────────────────────────────
-  {
-    slug:        "certificate",
-    name:        "Certificate",
-    label:       "Compliance",
-    Icon:        IconCertificate,
-    accent:      "#6D28D9",
-    iconBg:      "linear-gradient(140deg, rgba(139,92,246,0.16) 0%, rgba(109,40,217,0.30) 100%)",
-    iconGlow:    "0 2px 16px rgba(109,40,217,0.24), inset 0 1px 0 rgba(255,255,255,0.60)",
-    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(139,92,246,0.09) 0%, transparent 58%)",
-    hoverBorder: "rgba(109,40,217,0.40)",
-    hoverShadow: "0 14px 44px rgba(109,40,217,0.18), 0 4px 14px rgba(0,0,0,0.06)",
-    pillBg:      "rgba(109,40,217,0.08)",
-  },
-
   // ── Material — Dark Amber ──────────────────────────────────────────────────
   {
     slug:        "material",
@@ -93,34 +78,49 @@ const MODULES: ModuleConfig[] = [
     pillBg:      "rgba(180,83,9,0.08)",
   },
 
+  // ── FLGO — Deep Ocean Blue ────────────────────────────────────────────────
+  {
+    slug:        "flgo",
+    name:        "FLGO",
+    label:       "Fuel Operations",
+    Icon:        IconGasStation,
+    accent:      "#0369a1",
+    iconBg:      "linear-gradient(140deg, rgba(3,105,161,0.14) 0%, rgba(14,74,110,0.30) 100%)",
+    iconGlow:    "0 2px 16px rgba(3,105,161,0.22), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(3,105,161,0.08) 0%, transparent 58%)",
+    hoverBorder: "rgba(3,105,161,0.40)",
+    hoverShadow: "0 14px 44px rgba(3,105,161,0.18), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(3,105,161,0.08)",
+  },
+
+  // ── Certificate — Deep Violet ──────────────────────────────────────────────
+  {
+    slug:        "certificate",
+    name:        "Certificate",
+    label:       "Compliance",
+    Icon:        IconCertificate,
+    accent:      "#6D28D9",
+    iconBg:      "linear-gradient(140deg, rgba(139,92,246,0.16) 0%, rgba(109,40,217,0.30) 100%)",
+    iconGlow:    "0 2px 16px rgba(109,40,217,0.24), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(139,92,246,0.09) 0%, transparent 58%)",
+    hoverBorder: "rgba(109,40,217,0.40)",
+    hoverShadow: "0 14px 44px rgba(109,40,217,0.18), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(109,40,217,0.08)",
+  },
+
   // ── QHSE — Forest Green ────────────────────────────────────────────────────
   {
     slug:        "qhse",
     name:        "QHSE",
     label:       "Safety & Quality",
     Icon:        IconShieldCheck,
-    accent:      "#047857",
-    iconBg:      "linear-gradient(140deg, rgba(5,150,105,0.17) 0%, rgba(4,120,87,0.32) 100%)",
-    iconGlow:    "0 2px 16px rgba(4,120,87,0.24), inset 0 1px 0 rgba(255,255,255,0.60)",
-    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(5,150,105,0.09) 0%, transparent 58%)",
-    hoverBorder: "rgba(4,120,87,0.40)",
-    hoverShadow: "0 14px 44px rgba(4,120,87,0.18), 0 4px 14px rgba(0,0,0,0.06)",
-    pillBg:      "rgba(4,120,87,0.08)",
-  },
-
-  // ── Repair — Deep Rose ─────────────────────────────────────────────────────
-  {
-    slug:        "repair",
-    name:        "Repair",
-    label:       "Work Orders",
-    Icon:        IconHammer,
-    accent:      "#9F1239",
-    iconBg:      "linear-gradient(140deg, rgba(225,29,72,0.15) 0%, rgba(190,18,60,0.30) 100%)",
-    iconGlow:    "0 2px 16px rgba(190,18,60,0.22), inset 0 1px 0 rgba(255,255,255,0.60)",
-    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(225,29,72,0.08) 0%, transparent 58%)",
-    hoverBorder: "rgba(190,18,60,0.40)",
-    hoverShadow: "0 14px 44px rgba(190,18,60,0.16), 0 4px 14px rgba(0,0,0,0.06)",
-    pillBg:      "rgba(190,18,60,0.08)",
+    accent:      "#15803d",
+    iconBg:      "linear-gradient(140deg, rgba(21,128,61,0.14) 0%, rgba(20,83,45,0.28) 100%)",
+    iconGlow:    "0 2px 16px rgba(21,128,61,0.22), inset 0 1px 0 rgba(255,255,255,0.60)",
+    cardWash:    "radial-gradient(ellipse at 95% 5%, rgba(21,128,61,0.08) 0%, transparent 58%)",
+    hoverBorder: "rgba(21,128,61,0.40)",
+    hoverShadow: "0 14px 44px rgba(21,128,61,0.16), 0 4px 14px rgba(0,0,0,0.06)",
+    pillBg:      "rgba(21,128,61,0.08)",
   },
 ];
 

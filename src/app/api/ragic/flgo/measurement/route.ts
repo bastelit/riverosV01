@@ -5,6 +5,7 @@ import { ragicRequest } from "@/lib/ragic";
 import { SHEETS, FLGO_FIELDS } from "@/constants/ragic-fields";
 
 interface TankRow {
+  subtableRowId?: string;  // present when editing an existing record
   tankName: string;
   fuelType: string;
   maxCapacity: string;
@@ -22,11 +23,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const { date, time, vessel, tanks } = (await req.json()) as {
+    const { date, time, vessel, tanks, editRagicId } = (await req.json()) as {
       date: string;
       time: string;
       vessel: string;
       tanks: TankRow[];
+      editRagicId?: string;
     };
 
     if (!vessel || !tanks?.length) {
@@ -45,12 +47,14 @@ export async function POST(req: NextRequest) {
       [FLGO_FIELDS.HEADER_VESSEL]:    vessel,
     };
 
-    // Build subtable using the correct Ragic JSON format:
-    //   _subtable_<subtableId>: { "-1": { fieldId: value, … }, "-2": { … }, … }
-    // Negative row keys = new rows (Ragic convention for create).
+    // Build subtable rows.
+    // Create: negative keys "-1", "-2" … (Ragic convention for new rows).
+    // Edit:   use the existing subtableRowId (positive int) so Ragic updates in-place.
     const subtableRows: Record<string, Record<string, string>> = {};
     tanks.forEach((tank, i) => {
-      const rowKey = String(-(i + 1)); // "-1", "-2", "-3", …
+      const rowKey = tank.subtableRowId && editRagicId
+        ? tank.subtableRowId          // update existing row
+        : String(-(i + 1));           // new row
       subtableRows[rowKey] = {
         [FLGO_FIELDS.SUB_VESSEL_NAME]:   vessel,
         [FLGO_FIELDS.SUB_FUEL_TYPE]:     tank.fuelType,
@@ -66,10 +70,13 @@ export async function POST(req: NextRequest) {
       [`_subtable_${FLGO_FIELDS.SUB_TABLE_ID}`]: subtableRows,
     };
 
-    // POST to Ragic.
-    // doFormula=true  → recalculates formula fields (PERCENTAGE_FILLED etc.)
-    // doLinkLoad=true → resolves link & load fields
-    const result = await ragicRequest(SHEETS.FLGO_MEASUREMENT, {
+    // For edit: POST to sheet/<rowId> (Ragic update semantics).
+    // For create: POST to sheet (no row ID).
+    const path = editRagicId
+      ? `${SHEETS.FLGO_MEASUREMENT}/${editRagicId}`
+      : SHEETS.FLGO_MEASUREMENT;
+
+    const result = await ragicRequest(path, {
       method: "POST",
       params: {
         doLinkLoad: "true",

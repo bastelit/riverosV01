@@ -4,7 +4,6 @@ import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Ship,
   User,
   Settings,
   LogOut,
@@ -13,16 +12,17 @@ import {
   Anchor,
   X,
   Mail,
-  Droplets,
 } from "lucide-react";
+import { IconGasStation } from "@tabler/icons-react";
 import { useLayoutStore } from "@/store/layout-store";
 import { useVesselStore } from "@/store/vessel-store";
 
 // Maps moduleKey → icon + accent colour used in the TopNav breadcrumb
-const MODULE_META: Record<string, { icon: React.ReactNode; accent: string }> = {
+const MODULE_META: Record<string, { icon: React.ReactNode; accent: string; iconBg: string }> = {
   flgo: {
-    icon: <Droplets className="w-[17px] h-[17px] text-cyan-500" strokeWidth={1.75} />,
-    accent: "#0891b2",
+    icon: <IconGasStation size={17} stroke={1.75} style={{ color: "#0369a1" }} />,
+    accent: "#0369a1",
+    iconBg: "rgba(3,105,161,0.08)",
   },
 };
 
@@ -86,14 +86,11 @@ export default function TopNav({ name, email, vessel, vesselAbbr }: TopNavProps)
           <div className="flex items-center gap-3 min-w-0">
 
             {/* Brand */}
-            <div className="flex items-center gap-2.5 flex-shrink-0">
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #071e3d 0%, #0a3d6b 100%)" }}
-              >
-                <Ship className="w-4 h-4 text-white" strokeWidth={1.5} />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-5 h-[26px] flex-shrink-0">
+                <img src="/riveros-logo.jpg" alt="RIVEROS" className="w-full h-full object-contain" />
               </div>
-              <span className="text-[15px] font-bold tracking-[0.1em] text-[#04111f]">
+              <span className="text-[15px] font-black tracking-[0.1em] text-[#04111f]">
                 RIVEROS
               </span>
             </div>
@@ -116,7 +113,10 @@ export default function TopNav({ name, email, vessel, vesselAbbr }: TopNavProps)
 
                 {/* Module icon + name */}
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center flex-shrink-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: moduleMeta.iconBg }}
+                  >
                     {moduleMeta.icon}
                   </div>
                   <div className="min-w-0">

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import ModuleGrid from "@/components/features/modules/module-grid";
+import FlgoPrefetch from "@/components/features/dashboard/flgo-prefetch";
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
@@ -11,6 +12,8 @@ export default async function DashboardPage() {
 
   return (
     <div>
+      {/* Silent background prefetch — populates FLGO store while user is on dashboard */}
+      <FlgoPrefetch />
       {/* Page header */}
       <div className="mb-10">
         <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-slate-400 mb-2">

@@ -67,4 +67,13 @@ export const FLGO_FIELDS = {
   SUB_LAST_ROB:       "1008782",
   SUB_ACTUAL_VOLUME:   "1008798",
   SUB_BUNKERED_VOLUME: "1008783",
+
+  // Subtable per-tank report volume (populated by Ragic formula or user input)
+  REPORT_VOLUME:       "1017884",
+
+  // Aggregated total volume fields (calculated by Ragic from subtable)
+  WATER_TOTAL_VOLUME:  "1008788",
+  FUEL_TOTAL_VOLUME:   "1008764",
+  LUBE_TOTAL_VOLUME:   "1008765",
+  ADBLUE_TOTAL_VOLUME: "1008789",
 } as const;

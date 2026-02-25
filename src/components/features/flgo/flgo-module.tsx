@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { IconRulerMeasure, IconGasStation } from "@tabler/icons-react";
+import { IconRulerMeasure, IconDroplet, IconChartBar, IconTable } from "@tabler/icons-react";
 import { useLayoutStore } from "@/store/layout-store";
-import MeasurementView from "./measurement-view";
-import BunkeringView from "./bunkering-view";
+import MeasurementList  from "./measurement-list";
+import MeasurementView  from "./measurement-view";
+import BunkeringList    from "./bunkering-list";
+import BunkeringView    from "./bunkering-view";
+import BarReportView    from "./bar-report-view";
+import FinalReportView  from "./final-report-view";
 
-type Tab = "measurement" | "bunkering";
+type Tab  = "measurement" | "bunkering" | "bar-report" | "final-report";
+type View = "list" | "form";
 
 interface FlgoModuleProps {
   vessel: string;
@@ -15,6 +20,12 @@ interface FlgoModuleProps {
 
 export default function FlgoModule({ vessel, vesselAbbr }: FlgoModuleProps) {
   const [activeTab, setActiveTab] = useState<Tab>("measurement");
+
+  // Each tab keeps its own view state — switching tabs never resets the other
+  const [measurementView,  setMeasurementView]  = useState<View>("list");
+  const [bunkeringView,    setBunkeringView]     = useState<View>("list");
+  const [editRagicId,      setEditRagicId]       = useState<string | null>(null);
+
   const { setModule, clearModule } = useLayoutStore();
 
   // Inject FLGO identity into the TopNav; clear when navigating away
@@ -24,21 +35,18 @@ export default function FlgoModule({ vessel, vesselAbbr }: FlgoModuleProps) {
   }, [setModule, clearModule]);
 
   const tabs: { id: Tab; label: string; Icon: typeof IconRulerMeasure }[] = [
-    { id: "measurement", label: "Measurement", Icon: IconRulerMeasure },
-    { id: "bunkering",   label: "Bunkering",   Icon: IconGasStation   },
-    // Future tabs (Corrections, Reports) go here
+    { id: "measurement",  label: "Measurement",  Icon: IconRulerMeasure },
+    { id: "bunkering",    label: "Bunkering",    Icon: IconDroplet      },
+    { id: "bar-report",   label: "Bar Report",   Icon: IconChartBar     },
+    { id: "final-report", label: "Final Report", Icon: IconTable        },
   ];
 
   return (
-    // Height = full viewport minus TopNav (56px) only — identity bar is now IN TopNav
     <div
       className="flex flex-col overflow-hidden"
       style={{ height: "calc(100vh - 56px)" }}
     >
-      {/* ── Sub-header: tab navigation ─────────────────────────────
-          Full-width, breaks out of parent px-6. Both tabs always
-          visually prominent — active vs inactive differ in style,
-          not in visibility. Ready for future tabs.               */}
+      {/* ── Sub-header: tab navigation ───────────────────────────── */}
       <div
         className="-mx-6 px-6 flex-shrink-0 bg-white border-b border-slate-100 flex items-end gap-1"
         style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}
@@ -57,24 +65,50 @@ export default function FlgoModule({ vessel, vesselAbbr }: FlgoModuleProps) {
             >
               <Icon size={16} stroke={active ? 2.4 : 1.75} />
               {label}
-              {/* Active indicator — thick bottom bar */}
+              {/* Active indicator */}
               <span
                 className="absolute bottom-0 left-0 right-0 h-[3px] rounded-t-full transition-all duration-200"
-                style={{
-                  background: active ? "#071e3d" : "transparent",
-                }}
+                style={{ background: active ? "#071e3d" : "transparent" }}
               />
             </button>
           );
         })}
       </div>
 
-      {/* ── Content fills all remaining height ──────────────────── */}
-      <div className="flex-1 min-h-0 overflow-hidden py-4">
+      {/* ── Content ──────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-hidden py-4 flex flex-col">
         {activeTab === "measurement" ? (
-          <MeasurementView vessel={vessel} vesselAbbr={vesselAbbr} />
+          measurementView === "list" ? (
+            <MeasurementList
+              onNew={() => { setEditRagicId(null); setMeasurementView("form"); }}
+              onEdit={(id) => { setEditRagicId(id); setMeasurementView("form"); }}
+            />
+          ) : (
+            <MeasurementView
+              vessel={vessel}
+              vesselAbbr={vesselAbbr}
+              editRagicId={editRagicId ?? undefined}
+              onBack={() => { setEditRagicId(null); setMeasurementView("list"); }}
+            />
+          )
+        ) : activeTab === "bunkering" ? (
+          bunkeringView === "list" ? (
+            <BunkeringList
+              onNew={() => { setEditRagicId(null); setBunkeringView("form"); }}
+              onEdit={(id) => { setEditRagicId(id); setBunkeringView("form"); }}
+            />
+          ) : (
+            <BunkeringView
+              vessel={vessel}
+              vesselAbbr={vesselAbbr}
+              editRagicId={editRagicId ?? undefined}
+              onBack={() => { setEditRagicId(null); setBunkeringView("list"); }}
+            />
+          )
+        ) : activeTab === "bar-report" ? (
+          <BarReportView />
         ) : (
-          <BunkeringView vessel={vessel} vesselAbbr={vesselAbbr} />
+          <FinalReportView />
         )}
       </div>
     </div>

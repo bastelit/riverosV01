@@ -1,13 +1,21 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Ship, CheckCircle2, AlertCircle, Loader2, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { CheckCircle2, AlertCircle, Loader2, X } from "lucide-react";
+import { IconArrowLeft, IconShip } from "@tabler/icons-react";
 import { useVesselStore } from "@/store/vessel-store";
 import type { Tank } from "@/store/vessel-store";
+import { useFlgoStore } from "@/store/flgo-store";
 
 interface BunkeringViewProps {
   vessel: string;
   vesselAbbr: string;
+  onBack?: () => void;
+  editRagicId?: string;
+}
+
+function normalizeDate(d: string): string {
+  return d.replace(/\//g, "-");
 }
 
 // Fuel badge colours — light tinted bg + brand colour text (matches measurement-view)
@@ -25,9 +33,12 @@ function fuelBadgeStyle(fuelType: string): React.CSSProperties {
   return { background: "rgba(100,116,139,0.10)", color: "#475569", border: "1px solid rgba(100,116,139,0.20)" };
 }
 
-export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps) {
+export default function BunkeringView({ vessel, vesselAbbr, onBack, editRagicId }: BunkeringViewProps) {
+  const isEditMode = !!editRagicId;
   const storeTanks  = useVesselStore((s) => s.tanks);
   const vesselList  = useVesselStore((s) => s.vesselList);
+  const invalidate  = useFlgoStore((s) => s.invalidate);
+  const bunkerings  = useFlgoStore((s) => s.bunkerings);
 
   const isAdmin = !vessel;
 
@@ -46,6 +57,33 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
 
   const [actualVolumes, setActualVolumes]       = useState<Record<number, string>>({});
   const [bunkeredVolumes, setBunkeredVolumes]   = useState<Record<number, string>>({});
+
+  // ── Edit prefill ─────────────────────────────────────────────────────────
+  const [editPrefilled, setEditPrefilled] = useState(false);
+  useEffect(() => {
+    if (!editRagicId || editPrefilled) return;
+    const record = bunkerings.find((r) => r.ragicId === editRagicId);
+    if (!record || record.tanks.length === 0) return;
+    setDate(normalizeDate(record.date));
+    setTime(record.time ? record.time.slice(0, 5) : "");
+    const prefillTanks: Tank[] = record.tanks.map((t) => ({
+      tankName:    t.tankName,
+      fuelType:    t.fuelType,
+      maxCapacity: t.maxCapacity,
+      lastRob:     t.lastRob,
+    }));
+    setActiveTanks(prefillTanks);
+    setSelectedFuelType(record.tanks[0].fuelType);
+    const actuals: Record<number, string>   = {};
+    const bunkered: Record<number, string>  = {};
+    record.tanks.forEach((t, i) => {
+      actuals[i]  = t.actualVolume;
+      bunkered[i] = t.bunkeredVolume;
+    });
+    setActualVolumes(actuals);
+    setBunkeredVolumes(bunkered);
+    setEditPrefilled(true);
+  }, [editRagicId, bunkerings, editPrefilled]);
 
   const [submitting, setSubmitting]             = useState(false);
   const [submitError, setSubmitError]           = useState<string | null>(null);
@@ -153,6 +191,7 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
     setSubmitting(true);
     setSubmitError(null);
     setSubmitSuccess(false);
+    const editRecord = editRagicId ? bunkerings.find((r) => r.ragicId === editRagicId) : null;
     try {
       const res = await fetch("/api/ragic/flgo/bunkering", {
         method:  "POST",
@@ -160,20 +199,21 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
         body: JSON.stringify({
           date,
           time,
-          vessel:   selectedVessel,
-          fuelType: selectedFuelType,
-          tanks:    displayTanks.map((t, i) => ({
+          vessel:      selectedVessel,
+          fuelType:    selectedFuelType,
+          editRagicId: editRagicId ?? undefined,
+          tanks:       displayTanks.map((t, i) => ({
             ...t,
             actualVolume:   actualVolumes[i]   ?? "",
             bunkeredVolume: bunkeredVolumes[i] ?? "",
+            subtableRowId:  editRecord?.tanks[i]?.subtableRowId ?? undefined,
           })),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Submission failed.");
       setSubmitSuccess(true);
-      setActualVolumes({});
-      setBunkeredVolumes({});
+      invalidate(); // mark store stale so list refetches on back
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
@@ -187,6 +227,31 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
   // ────────────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full gap-3">
+
+      {/* ── Back navigation + mode badge ─────────────────────────── */}
+      {onBack && (
+        <div className="flex-shrink-0 flex items-center justify-between">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-400 hover:text-[#0369a1] transition-colors"
+          >
+            <IconArrowLeft size={14} stroke={2.2} />
+            Back to History
+          </button>
+          {isEditMode && (
+            <span
+              className="text-[11.5px] font-semibold px-2.5 py-1 rounded-full"
+              style={{
+                background: "rgba(3,105,161,0.08)",
+                color:      "#0369a1",
+                border:     "1px solid rgba(3,105,161,0.18)",
+              }}
+            >
+              Editing record #{editRagicId}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ── ① Vessel data strip ──────────────────────────────────── */}
       <div
@@ -286,7 +351,9 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
             className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
             style={{
               width:      `${progress}%`,
-              background: "linear-gradient(90deg, #0a3d6b 0%, #2563eb 100%)",
+              background: allBunkeredFilled && totalCount > 0
+                ? "linear-gradient(90deg, #16a34a 0%, #22c55e 100%)"
+                : "linear-gradient(90deg, #0e4a6e 0%, #0369a1 100%)",
             }}
           />
           <div
@@ -296,12 +363,12 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
             <div
               className="w-7 h-7 rounded-full bg-white flex items-center justify-center border-2"
               style={{
-                borderColor: progress > 0 ? "#2563eb" : "#cbd5e1",
+                borderColor: allBunkeredFilled && totalCount > 0 ? "#16a34a" : progress > 0 ? "#0369a1" : "#cbd5e1",
                 boxShadow:   "0 1px 6px rgba(7,30,61,0.15)",
               }}
             >
-              <Ship className="w-3.5 h-3.5" strokeWidth={1.75}
-                style={{ color: progress > 0 ? "#2563eb" : "#94a3b8" }} />
+              <IconShip size={14} stroke={1.75}
+                style={{ color: allBunkeredFilled && totalCount > 0 ? "#16a34a" : progress > 0 ? "#0369a1" : "#94a3b8" }} />
             </div>
           </div>
         </div>
@@ -322,7 +389,7 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
         {/* Dark header band */}
         <div
           className="flex-shrink-0 px-6 py-2.5 flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg, #071e3d 0%, #0a3d6b 100%)" }}
+          style={{ background: "linear-gradient(135deg, #0e4a6e 0%, #0369a1 100%)" }}
         >
           <h2 className="text-[13px] font-bold text-white tracking-[0.2em] uppercase">
             Tank Details
@@ -364,11 +431,11 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
         ) : (
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
+              <tr style={{ background: "linear-gradient(135deg, #0e4a6e 0%, #0369a1 100%)" }}>
                 {["Fuel Type", "Tank Name", "Max Capacity", "Last ROB", "Actual Volume", "Bunkered Volume"].map((col) => (
                   <th
                     key={col}
-                    className="px-5 py-2.5 text-left text-[12px] font-bold text-[#1e3a5f] uppercase tracking-wider whitespace-nowrap"
+                    className="px-5 py-3 text-left text-[13px] font-bold text-white uppercase tracking-wider whitespace-nowrap"
                   >
                     {col}
                   </th>
@@ -473,8 +540,8 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
           style={
             canSubmit
               ? {
-                  background: "linear-gradient(135deg, #071e3d 0%, #0a3d6b 100%)",
-                  boxShadow:  "0 4px 20px rgba(7,30,61,0.32)",
+                  background: "linear-gradient(135deg, #0e4a6e 0%, #0369a1 100%)",
+                  boxShadow:  "0 4px 20px rgba(3,105,161,0.32)",
                 }
               : { background: "#e2e8f0", color: "#94a3b8", cursor: "not-allowed" }
           }
@@ -524,7 +591,7 @@ export default function BunkeringView({ vessel, vesselAbbr }: BunkeringViewProps
               <button
                 onClick={() => applyFuelTypeChange(pendingFuelType)}
                 className="px-5 h-9 rounded-xl text-[13px] font-semibold text-white transition-colors"
-                style={{ background: "linear-gradient(135deg, #071e3d 0%, #0a3d6b 100%)" }}
+                style={{ background: "linear-gradient(135deg, #0e4a6e 0%, #0369a1 100%)" }}
               >
                 Continue
               </button>

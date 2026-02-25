@@ -1,0 +1,10 @@
+<svg viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer hull — darkest navy -->
+  <path d="M16 40 L0 20 L16 0 L32 20 Z" fill="#0c2340"/>
+  <!-- Middle layer — bright blue -->
+  <path d="M16 34 L5 20 L16 5 L27 20 Z" fill="#1c5496"/>
+  <!-- Inner highlight — lighter blue -->
+  <path d="M16 26 L11 20 L16 13 L21 20 Z" fill="#5891c8"/>
+  <!-- Tip accent — near black -->
+  <path d="M16 0 L13 9 L16 13 L19 9 Z" fill="#060f1e"/>
+</svg>

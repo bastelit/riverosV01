@@ -1,13 +1,21 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Ship, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { IconArrowLeft, IconShip } from "@tabler/icons-react";
 import { useVesselStore } from "@/store/vessel-store";
 import type { Tank } from "@/store/vessel-store";
+import { useFlgoStore } from "@/store/flgo-store";
 
 interface MeasurementViewProps {
   vessel: string;
   vesselAbbr: string;
+  onBack?: () => void;
+  editRagicId?: string;   // present when editing an existing record
+}
+
+function normalizeDate(d: string): string {
+  return d.replace(/\//g, "-");
 }
 
 // Fuel badge colours — exact hex values as specified
@@ -25,9 +33,12 @@ function fuelBadgeStyle(fuelType: string): React.CSSProperties {
   return { background: "rgba(100,116,139,0.10)", color: "#475569", border: "1px solid rgba(100,116,139,0.20)" };
 }
 
-export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewProps) {
+export default function MeasurementView({ vessel, vesselAbbr, onBack, editRagicId }: MeasurementViewProps) {
+  const isEditMode = !!editRagicId;
   const storeTanks    = useVesselStore((s) => s.tanks);
   const vesselList    = useVesselStore((s) => s.vesselList);
+  const invalidate    = useFlgoStore((s) => s.invalidate);
+  const measurements  = useFlgoStore((s) => s.measurements);
 
   // ── Admin detection ──────────────────────────────────────────────────────
   // A user with no assigned vessel is treated as admin → sees vessel selector
@@ -47,6 +58,29 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
 
   // Volume inputs
   const [actualVolumes, setActualVolumes]   = useState<Record<number, string>>({});
+
+  // ── Edit prefill ─────────────────────────────────────────────────────────
+  const [editPrefilled, setEditPrefilled] = useState(false);
+  useEffect(() => {
+    if (!editRagicId || editPrefilled) return;
+    const record = measurements.find((r) => r.ragicId === editRagicId);
+    if (!record) return;
+    setDate(normalizeDate(record.date));
+    setTime(record.time ? record.time.slice(0, 5) : "");
+    if (record.tanks.length > 0) {
+      const prefillTanks: Tank[] = record.tanks.map((t) => ({
+        tankName:    t.tankName,
+        fuelType:    t.fuelType,
+        maxCapacity: t.maxCapacity,
+        lastRob:     t.lastRob,
+      }));
+      setActiveTanks(prefillTanks);
+      const vols: Record<number, string> = {};
+      record.tanks.forEach((t, i) => { vols[i] = t.actualVolume; });
+      setActualVolumes(vols);
+    }
+    setEditPrefilled(true);
+  }, [editRagicId, measurements, editPrefilled]);
 
   // Submit state
   const [submitting, setSubmitting]         = useState(false);
@@ -101,12 +135,16 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
     }
   }
 
-  // Feature 2: Submit → POST to Ragic via proxy route
+  // Feature 2: Submit → POST (create) or POST to /<id> (update) via proxy route
   async function handleSubmit() {
     if (!allFilled || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
     setSubmitSuccess(false);
+
+    // Find the original record so we can pass per-tank subtableRowIds for edit
+    const editRecord = editRagicId ? measurements.find((r) => r.ragicId === editRagicId) : null;
+
     try {
       const res = await fetch("/api/ragic/flgo/measurement", {
         method:  "POST",
@@ -115,16 +153,18 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
           date,
           time,
           vessel: selectedVessel,
+          editRagicId: editRagicId ?? undefined,
           tanks: activeTanks.map((t, i) => ({
             ...t,
-            actualVolume: actualVolumes[i] ?? "",
+            actualVolume:  actualVolumes[i] ?? "",
+            subtableRowId: editRecord?.tanks[i]?.subtableRowId ?? undefined,
           })),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Submission failed.");
       setSubmitSuccess(true);
-      setActualVolumes({}); // reset inputs after success
+      invalidate(); // mark store stale so list refetches on back
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
@@ -138,6 +178,31 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
   // ────────────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full gap-3">
+
+      {/* ── Back navigation + mode badge ─────────────────────────── */}
+      {onBack && (
+        <div className="flex-shrink-0 flex items-center justify-between">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-400 hover:text-[#0a3d6b] transition-colors"
+          >
+            <IconArrowLeft size={14} stroke={2.2} />
+            Back to History
+          </button>
+          {isEditMode && (
+            <span
+              className="text-[11.5px] font-semibold px-2.5 py-1 rounded-full"
+              style={{
+                background: "rgba(37,99,235,0.08)",
+                color:      "#1d4ed8",
+                border:     "1px solid rgba(37,99,235,0.18)",
+              }}
+            >
+              Editing record #{editRagicId}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ── ① Vessel data strip ──────────────────────────────────── */}
       <div
@@ -207,7 +272,9 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
             className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
             style={{
               width: `${progress}%`,
-              background: "linear-gradient(90deg, #0a3d6b 0%, #2563eb 100%)",
+              background: allFilled
+                ? "linear-gradient(90deg, #16a34a 0%, #22c55e 100%)"
+                : "linear-gradient(90deg, #0e4a6e 0%, #0369a1 100%)",
             }}
           />
           <div
@@ -217,12 +284,12 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
             <div
               className="w-7 h-7 rounded-full bg-white flex items-center justify-center border-2"
               style={{
-                borderColor: progress > 0 ? "#2563eb" : "#cbd5e1",
+                borderColor: allFilled ? "#16a34a" : progress > 0 ? "#0369a1" : "#cbd5e1",
                 boxShadow: "0 1px 6px rgba(7,30,61,0.15)",
               }}
             >
-              <Ship className="w-3.5 h-3.5" strokeWidth={1.75}
-                style={{ color: progress > 0 ? "#2563eb" : "#94a3b8" }} />
+              <IconShip size={14} stroke={1.75}
+                style={{ color: allFilled ? "#16a34a" : progress > 0 ? "#0369a1" : "#94a3b8" }} />
             </div>
           </div>
         </div>
@@ -243,7 +310,7 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
         {/* Dark header band — centered title */}
         <div
           className="flex-shrink-0 px-6 py-2.5 flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg, #071e3d 0%, #0a3d6b 100%)" }}
+          style={{ background: "linear-gradient(135deg, #0e4a6e 0%, #0369a1 100%)" }}
         >
           <h2 className="text-[13px] font-bold text-white tracking-[0.2em] uppercase">
             Tank Details
@@ -267,11 +334,11 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
         ) : (
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
+              <tr style={{ background: "linear-gradient(135deg, #0e4a6e 0%, #0369a1 100%)" }}>
                 {["Fuel Type", "Tank Name", "Max Capacity", "Last ROB", "Actual Volume"].map((col) => (
                   <th
                     key={col}
-                    className="px-5 py-2.5 text-left text-[12px] font-bold text-[#1e3a5f] uppercase tracking-wider whitespace-nowrap"
+                    className="px-5 py-3 text-left text-[13px] font-bold text-white uppercase tracking-wider whitespace-nowrap"
                   >
                     {col}
                   </th>
@@ -358,14 +425,14 @@ export default function MeasurementView({ vessel, vesselAbbr }: MeasurementViewP
           style={
             allFilled && !submitting
               ? {
-                  background: "linear-gradient(135deg, #071e3d 0%, #0a3d6b 100%)",
-                  boxShadow: "0 4px 20px rgba(7,30,61,0.32)",
+                  background: "linear-gradient(135deg, #0e4a6e 0%, #0369a1 100%)",
+                  boxShadow: "0 4px 20px rgba(3,105,161,0.32)",
                 }
               : { background: "#e2e8f0", color: "#94a3b8", cursor: "not-allowed" }
           }
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-          {submitting ? "Submitting…" : "Submit Measurement"}
+          {submitting ? "Submitting…" : isEditMode ? "Update Measurement" : "Submit Measurement"}
         </button>
       </div>
     </div>

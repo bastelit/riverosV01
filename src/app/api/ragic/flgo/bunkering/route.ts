@@ -5,6 +5,7 @@ import { ragicRequest } from "@/lib/ragic";
 import { SHEETS, FLGO_FIELDS } from "@/constants/ragic-fields";
 
 interface TankRow {
+  subtableRowId?: string;  // present when editing an existing record
   tankName: string;
   fuelType: string;
   maxCapacity: string;
@@ -23,12 +24,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const { date, time, vessel, fuelType, tanks } = (await req.json()) as {
+    const { date, time, vessel, fuelType, tanks, editRagicId } = (await req.json()) as {
       date: string;
       time: string;
       vessel: string;
       fuelType: string;
       tanks: TankRow[];
+      editRagicId?: string;
     };
 
     if (!vessel || !fuelType || !tanks?.length) {
@@ -52,19 +54,21 @@ export async function POST(req: NextRequest) {
       [FLGO_FIELDS.HEADER_VESSEL]:    vessel,
     };
 
-    // Build subtable using Ragic JSON format:
-    //   _subtable_<subtableId>: { "-1": { fieldId: value }, "-2": { … }, … }
-    // Negative row keys = new rows.
+    // Build subtable rows.
+    // Create: negative keys "-1", "-2" … (new rows).
+    // Edit:   use the existing subtableRowId (positive int) to update in-place.
     const subtableRows: Record<string, Record<string, string>> = {};
     tanks.forEach((tank, i) => {
-      const rowKey = String(-(i + 1)); // "-1", "-2", "-3", …
+      const rowKey = tank.subtableRowId && editRagicId
+        ? tank.subtableRowId
+        : String(-(i + 1));
       subtableRows[rowKey] = {
-        [FLGO_FIELDS.SUB_VESSEL_NAME]:    vessel,
-        [FLGO_FIELDS.SUB_FUEL_TYPE]:      tank.fuelType,
-        [FLGO_FIELDS.SUB_TANK_NAME]:      tank.tankName,
-        [FLGO_FIELDS.SUB_MAX_CAPACITY]:   tank.maxCapacity,
-        [FLGO_FIELDS.SUB_LAST_ROB]:       tank.lastRob,
-        [FLGO_FIELDS.SUB_ACTUAL_VOLUME]:  tank.actualVolume,
+        [FLGO_FIELDS.SUB_VESSEL_NAME]:     vessel,
+        [FLGO_FIELDS.SUB_FUEL_TYPE]:       tank.fuelType,
+        [FLGO_FIELDS.SUB_TANK_NAME]:       tank.tankName,
+        [FLGO_FIELDS.SUB_MAX_CAPACITY]:    tank.maxCapacity,
+        [FLGO_FIELDS.SUB_LAST_ROB]:        tank.lastRob,
+        [FLGO_FIELDS.SUB_ACTUAL_VOLUME]:   tank.actualVolume,
         [FLGO_FIELDS.SUB_BUNKERED_VOLUME]: tank.bunkeredVolume,
       };
     });
@@ -74,10 +78,11 @@ export async function POST(req: NextRequest) {
       [`_subtable_${FLGO_FIELDS.SUB_TABLE_ID}`]: subtableRows,
     };
 
-    // POST to Ragic.
-    // doFormula=true  → recalculates formula fields (PERCENTAGE_FILLED etc.)
-    // doLinkLoad=true → resolves link & load fields
-    const result = await ragicRequest(SHEETS.FLGO_MEASUREMENT, {
+    const path = editRagicId
+      ? `${SHEETS.FLGO_MEASUREMENT}/${editRagicId}`
+      : SHEETS.FLGO_MEASUREMENT;
+
+    const result = await ragicRequest(path, {
       method: "POST",
       params: {
         doLinkLoad: "true",
